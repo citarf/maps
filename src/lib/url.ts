@@ -7,10 +7,12 @@ import {
 	variableUsesTimeStep
 } from '@openmeteo/weather-map-layer';
 import { mode } from 'mode-watcher';
+import { toast } from 'svelte-sonner';
 
 import { browser } from '$app/environment';
 import { replaceState } from '$app/navigation';
 
+import { overlays } from '$lib/stores/composition';
 import { DEFAULT_SHOW_DEPARTMENTS, showDepartments } from '$lib/stores/departments';
 import { DEFAULT_SHOW_LABELS, showLabels } from '$lib/stores/labels';
 import { map as m } from '$lib/stores/map';
@@ -31,6 +33,7 @@ import {
 	windOverlayLevel
 } from '$lib/stores/vector';
 
+import { parseSources, serializeSources } from '$lib/chart-encoding';
 import {
 	ANOMALY_DOMAIN,
 	ANOMALY_VARIABLE,
@@ -141,6 +144,18 @@ export const urlParamsToPreferences = () => {
 		variable2.set(variable2Param);
 	} else if (get(variable2) !== 'precipitation') {
 		url.searchParams.set('variable2', get(variable2));
+	}
+
+	const overlaysParam = params.get('overlays');
+	if (overlaysParam) {
+		const parsed = parseSources(overlaysParam);
+		if (parsed) {
+			overlays.set(parsed);
+		} else {
+			toast('Paramètre « overlays » invalide, ignoré.');
+		}
+	} else if (get(overlays).length > 0) {
+		url.searchParams.set('overlays', serializeSources(get(overlays)));
 	}
 
 	const layer2Param = params.get('layer2');
