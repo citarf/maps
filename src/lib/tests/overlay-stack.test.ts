@@ -102,6 +102,31 @@ describe('OverlayStack.sync', () => {
 		expect(stack.vectorManagers()).toEqual([first[0].manager]);
 	});
 
+	it('activeSources : une URL affichée par superposition, aplat préféré, dans l’ordre', () => {
+		const stack = makeStack();
+		const loads = stack.sync(
+			desiredOverlayLayers(
+				[
+					{ variable: 'geopotential_height_500hPa', contours: true },
+					{ variable: 'cloud_cover_low', raster: true, contours: true }
+				],
+				ctx,
+				urlFor
+			)
+		);
+		expect(stack.activeSources()).toEqual([]); // rien d'affiché tant qu'aucune frame
+		// Ordre des plans : isohypses (vecteur), nuages bas (aplat), nuages bas
+		// (vecteur). L'URL vecteur des nuages est marquée pour vérifier que
+		// l'aplat est préféré.
+		loads.forEach(({ manager, url }, i) =>
+			vi.spyOn(manager, 'getActiveSourceUrl').mockReturnValue(i === 2 ? `${url}#vecteur` : url)
+		);
+		expect(stack.activeSources()).toEqual([
+			{ variable: 'geopotential_height_500hPa', url: 'u/geopotential_height_500hPa' },
+			{ variable: 'cloud_cover_low', url: 'u/cloud_cover_low' }
+		]);
+	});
+
 	it('détruit les couches retirées du plan', () => {
 		const stack = makeStack();
 		const [vector] = stack.sync(plans);
