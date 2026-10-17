@@ -9,6 +9,8 @@
 
 	import { helpOpen, sidebarCollapsed, sidebarWidth } from '$lib/stores/preferences';
 
+	import CompositionPanel from '$lib/components/composition/composition-panel.svelte';
+
 	import LayerList from './layer-list.svelte';
 	import ModelSelector from './model-selector.svelte';
 
@@ -26,9 +28,10 @@
 	const reduceMotion = new MediaQuery('(prefers-reduced-motion: reduce)');
 
 	// Sections dépliables (état local, non persisté). Calques ouvert (action
-	// principale) ; Affichage et Style repliés par défaut pour garder la sidebar
-	// compacte — on les déplie au besoin.
+	// principale) ; Compositions, Affichage et Style repliés par défaut pour
+	// garder la sidebar compacte — on les déplie au besoin.
 	let layersOpen = $state(true);
+	let compositionsOpen = $state(false);
 	let displayOpen = $state(false);
 	let styleOpen = $state(false);
 
@@ -109,6 +112,19 @@
 				{#if layersOpen}
 					<div transition:slide={{ duration: reduceMotion.current ? 0 : 200 }}>
 						<LayerList />
+					</div>
+				{/if}
+			</section>
+
+			<section>
+				{@render sectionHeader(
+					'Compositions',
+					compositionsOpen,
+					() => (compositionsOpen = !compositionsOpen)
+				)}
+				{#if compositionsOpen}
+					<div transition:slide={{ duration: reduceMotion.current ? 0 : 200 }}>
+						<CompositionPanel />
 					</div>
 				{/if}
 			</section>
