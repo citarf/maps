@@ -44,6 +44,7 @@
 ### Task 1 : Porter les modules purs d'upstream (types, encodage URL, compositions toutes faites)
 
 **Files:**
+
 - Create: `src/lib/chart-types.ts` (copie de `upstream/main:src/lib/chart-types.ts`, commentaires traduits)
 - Create: `src/lib/chart-encoding.ts` (copie de `upstream/main:src/lib/chart-encoding.ts`, imports `$lib`)
 - Create: `src/lib/chart-presets.ts` (adapté, voir étapes)
@@ -51,6 +52,7 @@
 - Test: `src/lib/tests/chart-presets.test.ts` (copie upstream **sans** le `describe('popularVariables')`, + tests ci-dessous)
 
 **Interfaces:**
+
 - Produces: types `ChartSource`, `ChartPreset` (champs inchangés d'upstream). `ChartState` et `SavedChart` d'upstream ne sont **pas** portés (remplacés par `Composition` / `SavedComposition`, Task 2).
 - Produces: `serializeSources(sources: ChartSource[]): string`, `parseSources(raw: string): ChartSource[] | undefined`, `sourcesEqual(a, b): boolean`, `cloneSources(sources): ChartSource[]` (signatures upstream). `matchPreset` d'upstream est **retiré** (remplacé par `matchPresetComposition`, Task 2).
 - Produces: `chartPresets: ChartPreset[]`, `getChartPreset(id: string): ChartPreset | undefined`, `PRESET_GROUP_ORDER: readonly string[]`.
@@ -104,6 +106,7 @@ Copies upstream, imports `$lib/…`, commentaires en français. Dans `chart-enco
 - [ ] **Step 5 : Créer `chart-presets.ts`**
 
 Reprendre les 22 compositions d'upstream (mêmes `id`, `sources` et valeurs, y compris `contourInterval`, `opacity`, `inlineVectors`), avec libellés et descriptions en français. Groupes : `'Synoptique'` (ex-« Synoptic »), `'Surface'`, `'Précipitations'` (ex-« Precipitation »), plus le nouveau groupe `'Infoclimat'` ; `PRESET_GROUP_ORDER = ['Synoptique', 'Surface', 'Précipitations', 'Infoclimat']`. Ne pas porter `PopularVariable` / `popularVariables`. Ajouter au groupe `'Infoclimat'` :
+
 - `thetaw850_z500` — « θ'w 850 hPa + géopotentiel 500 hPa » : `[{ variable: 'theta_w_850hPa', raster: true }, { variable: 'geopotential_height_500hPa', contours: true, contourInterval: 12.5 }]`
 - `thickness_mslp` — « Épaisseur 500/1000 hPa + pression mer » : `[{ variable: 'thickness_500_1000hPa', raster: true }, { variable: 'pressure_msl', contours: true, contourInterval: 2 }]`
 
@@ -124,10 +127,12 @@ git commit -m "feat(compositions): porte les types, l'encodage URL et les compos
 ### Task 2 : Modèle de composition (fond + superpositions), logique pure
 
 **Files:**
+
 - Create: `src/lib/composition.ts`
 - Test: `src/lib/tests/composition.test.ts`
 
 **Interfaces:**
+
 - Consumes: `ChartSource`, `ChartPreset`, `sourcesEqual`, `cloneSources`, `chartPresets` (Task 1) ; `variableHasDirections`, `variableAvailable` de `@openmeteo/weather-map-layer`.
 - Produces :
   - `interface Composition { variable: string; overlays: ChartSource[] }`
@@ -169,9 +174,18 @@ it('matchPresetComposition reconnaît une composition et rejette une variante', 
 });
 
 it('defaultOverlayFor : flèches pour le vent, isolignes sinon', () => {
-	expect(defaultOverlayFor('wind_u_component_850hPa', true)).toEqual({ variable: 'wind_u_component_850hPa', arrows: true });
-	expect(defaultOverlayFor('wind_u_component_850hPa', false)).toEqual({ variable: 'wind_u_component_850hPa', contours: true });
-	expect(defaultOverlayFor('pressure_msl', true)).toEqual({ variable: 'pressure_msl', contours: true });
+	expect(defaultOverlayFor('wind_u_component_850hPa', true)).toEqual({
+		variable: 'wind_u_component_850hPa',
+		arrows: true
+	});
+	expect(defaultOverlayFor('wind_u_component_850hPa', false)).toEqual({
+		variable: 'wind_u_component_850hPa',
+		contours: true
+	});
+	expect(defaultOverlayFor('pressure_msl', true)).toEqual({
+		variable: 'pressure_msl',
+		contours: true
+	});
 });
 
 it('isSourceAvailable : variable stockée, dérivée, absente, meta non chargé', () => {
@@ -182,21 +196,37 @@ it('isSourceAvailable : variable stockée, dérivée, absente, meta non chargé'
 });
 
 describe('effectiveOverlayFlags', () => {
-	const ctx = { primary: 'pressure_msl', primaryContours: true, primaryArrows: true, windArrowLevel: '10m' };
+	const ctx = {
+		primary: 'pressure_msl',
+		primaryContours: true,
+		primaryArrows: true,
+		windArrowLevel: '10m'
+	};
 	it('neutralise aplat et isolignes déjà dessinés par le fond', () => {
-		expect(effectiveOverlayFlags({ variable: 'pressure_msl', raster: true, contours: true }, ctx))
-			.toEqual({ raster: false, contours: false, arrows: false });
+		expect(
+			effectiveOverlayFlags({ variable: 'pressure_msl', raster: true, contours: true }, ctx)
+		).toEqual({ raster: false, contours: false, arrows: false });
 	});
 	it('garde les isolignes du fond quand le fond ne les dessine pas', () => {
-		expect(effectiveOverlayFlags({ variable: 'pressure_msl', contours: true }, { ...ctx, primaryContours: false }))
-			.toEqual({ raster: false, contours: true, arrows: false });
+		expect(
+			effectiveOverlayFlags(
+				{ variable: 'pressure_msl', contours: true },
+				{ ...ctx, primaryContours: false }
+			)
+		).toEqual({ raster: false, contours: true, arrows: false });
 	});
 	it('neutralise les flèches du niveau déjà rendu par l’overlay vent', () => {
-		expect(effectiveOverlayFlags({ variable: 'wind_u_component_10m', arrows: true }, ctx).arrows).toBe(false);
-		expect(effectiveOverlayFlags({ variable: 'wind_u_component_850hPa', arrows: true }, ctx).arrows).toBe(true);
+		expect(
+			effectiveOverlayFlags({ variable: 'wind_u_component_10m', arrows: true }, ctx).arrows
+		).toBe(false);
+		expect(
+			effectiveOverlayFlags({ variable: 'wind_u_component_850hPa', arrows: true }, ctx).arrows
+		).toBe(true);
 	});
 	it('ignore les flèches d’une variable sans direction', () => {
-		expect(effectiveOverlayFlags({ variable: 'temperature_2m', arrows: true }, ctx).arrows).toBe(false);
+		expect(effectiveOverlayFlags({ variable: 'temperature_2m', arrows: true }, ctx).arrows).toBe(
+			false
+		);
 	});
 });
 ```
@@ -227,12 +257,14 @@ git commit -m "feat(compositions): modèle fond + superpositions (logique pure)"
 ### Task 3 : Stores, actions et synchronisation URL
 
 **Files:**
+
 - Create: `src/lib/stores/composition.ts` (stores persistés uniquement, aucun import de `url.ts` ni `layers.ts`)
 - Create: `src/lib/composition-actions.ts` (mutations + URL + rechargement des couches)
 - Modify: `src/lib/url.ts` (`urlParamsToPreferences` lit `overlays`)
 - Test: `src/lib/tests/composition-store.test.ts`
 
 **Interfaces:**
+
 - Consumes: Task 1 (`serializeSources`, `parseSources`, `getChartPreset`, `cloneSources`), Task 2 (`Composition`, `SavedComposition`, `splitChartSources`, `defaultOverlayFor`, `matchPresetComposition`, `compositionsEqual`).
 - Produces (`stores/composition.ts`) :
   - `overlays = persisted<ChartSource[]>('composition-overlays', [])`
@@ -254,7 +286,9 @@ git commit -m "feat(compositions): modèle fond + superpositions (logique pure)"
 it('applyPreset règle le fond et les superpositions', () => {
 	applyPreset('z500_t850');
 	expect(get(variable)).toBe('temperature_850hPa');
-	expect(get(overlays)).toEqual([{ variable: 'geopotential_height_500hPa', contours: true, contourInterval: 12.5 }]);
+	expect(get(overlays)).toEqual([
+		{ variable: 'geopotential_height_500hPa', contours: true, contourInterval: 12.5 }
+	]);
 	expect(get(activePresetId)).toBe('z500_t850');
 	expect(updateUrl).toHaveBeenCalledWith('overlays', 'geopotential_height_500hPa:c12.5', '');
 });
@@ -313,12 +347,14 @@ git commit -m "feat(compositions): stores persistés, actions et paramètre d'UR
 ### Task 4 : Rendu des superpositions
 
 **Files:**
+
 - Modify: `src/lib/url.ts` : `VectorFlagOverride` gagne `intervals?: number | 'breakpoints'` ; nouvelle `getOverlayOmUrl(source: ChartSource, flags: { contours: boolean; arrows: boolean }): string | undefined`
 - Create: `src/lib/overlay-stack.ts`
 - Modify: `src/lib/layers.ts` (`addOmFileLayers`, `changeOMfileURL`, `reloadVectorStyle`)
 - Test: `src/lib/tests/overlay-stack.test.ts`, `src/lib/tests/url-builder.test.ts` (ajouts)
 
 **Interfaces:**
+
 - Consumes: Task 2 (`effectiveOverlayFlags`, `isSourceAvailable`), Task 3 (`overlays`), `SlotManager` / `SlotLayer` (`slot-manager.ts`), builders de `vector-styles.ts` (`buildContourColorExpr`, `buildContourWidthExpr`, `buildContourLabelExpr`, `buildArrowColorExpr`, `buildArrowWidthExpr`), `resolveWindArrowLevel()` (`url.ts`).
 - Produces (`url.ts`) : `getOverlayOmUrl` = `getOMUrlFor(source.variable, undefined, { grid: false, arrows: flags.arrows, contours: flags.contours, intervals: source.contourInterval ?? 'breakpoints' })` ; renvoie `undefined` sur `ANOMALY_DOMAIN`. Avec `intervals: 'breakpoints'`, aucun `&intervals=` n'est ajouté, quel que soit `vectorOptions.breakpoints`.
 - Produces (`overlay-stack.ts`) :
@@ -334,7 +370,10 @@ git commit -m "feat(compositions): stores persistés, actions et paramètre d'UR
 ```ts
 // url-builder.test.ts
 it('getOverlayOmUrl : isolignes à intervalle fixe, sans grille', () => {
-	const url = getOverlayOmUrl({ variable: 'pressure_msl', contours: true, contourInterval: 2 }, { contours: true, arrows: false });
+	const url = getOverlayOmUrl(
+		{ variable: 'pressure_msl', contours: true, contourInterval: 2 },
+		{ contours: true, arrows: false }
+	);
 	expect(url).toContain('variable=pressure_msl');
 	expect(url).toContain('&contours=true');
 	expect(url).toContain('&intervals=2');
@@ -342,30 +381,62 @@ it('getOverlayOmUrl : isolignes à intervalle fixe, sans grille', () => {
 });
 it('getOverlayOmUrl : isolignes sur les paliers de l’échelle → pas d’intervals', () => {
 	vectorOptions.set({ ...defaultVectorOptions, breakpoints: false, contourInterval: 5 });
-	expect(getOverlayOmUrl({ variable: 'pressure_msl', contours: true }, { contours: true, arrows: false })).not.toContain('intervals=');
+	expect(
+		getOverlayOmUrl({ variable: 'pressure_msl', contours: true }, { contours: true, arrows: false })
+	).not.toContain('intervals=');
 });
 it('getOverlayOmUrl : rien sur le domaine anomalie', () => {
 	d.set(ANOMALY_DOMAIN);
-	expect(getOverlayOmUrl({ variable: 'pressure_msl', contours: true }, { contours: true, arrows: false })).toBeUndefined();
+	expect(
+		getOverlayOmUrl({ variable: 'pressure_msl', contours: true }, { contours: true, arrows: false })
+	).toBeUndefined();
 });
 
 // overlay-stack.test.ts
-const ctx = { primary: 'temperature_850hPa', primaryContours: false, primaryArrows: false, windArrowLevel: null, metaVariables: ['temperature_850hPa', 'geopotential_height_500hPa', 'cloud_cover_low'] };
+const ctx = {
+	primary: 'temperature_850hPa',
+	primaryContours: false,
+	primaryArrows: false,
+	windArrowLevel: null,
+	metaVariables: ['temperature_850hPa', 'geopotential_height_500hPa', 'cloud_cover_low']
+};
 const urlFor = (s: ChartSource) => `u/${s.variable}`;
 it('un plan vecteur pour des isolignes, un plan aplat pour un aplat', () => {
-	expect(desiredOverlayLayers([{ variable: 'geopotential_height_500hPa', contours: true }, { variable: 'cloud_cover_low', raster: true }], ctx, urlFor).map((p) => p.key))
-		.toEqual(['0:geopotential_height_500hPa:vector', '1:cloud_cover_low:raster']);
+	expect(
+		desiredOverlayLayers(
+			[
+				{ variable: 'geopotential_height_500hPa', contours: true },
+				{ variable: 'cloud_cover_low', raster: true }
+			],
+			ctx,
+			urlFor
+		).map((p) => p.key)
+	).toEqual(['0:geopotential_height_500hPa:vector', '1:cloud_cover_low:raster']);
 });
 it('saute une superposition indisponible sur le domaine', () => {
-	expect(desiredOverlayLayers([{ variable: 'pressure_msl', contours: true }], ctx, urlFor)).toEqual([]);
+	expect(desiredOverlayLayers([{ variable: 'pressure_msl', contours: true }], ctx, urlFor)).toEqual(
+		[]
+	);
 });
 it('saute une superposition entièrement neutralisée par le fond', () => {
-	expect(desiredOverlayLayers([{ variable: 'temperature_850hPa', raster: true }], ctx, urlFor)).toEqual([]);
+	expect(
+		desiredOverlayLayers([{ variable: 'temperature_850hPa', raster: true }], ctx, urlFor)
+	).toEqual([]);
 });
 it('planOverlayUpdates : ne recharge que ce qui change, retire le reste', () => {
-	const desired = desiredOverlayLayers([{ variable: 'geopotential_height_500hPa', contours: true }], ctx, urlFor);
-	const current = new Map([['0:geopotential_height_500hPa:vector', 'u/geopotential_height_500hPa'], ['1:cloud_cover_low:raster', 'u/x']]);
-	expect(planOverlayUpdates(current, desired)).toEqual({ update: [], remove: ['1:cloud_cover_low:raster'] });
+	const desired = desiredOverlayLayers(
+		[{ variable: 'geopotential_height_500hPa', contours: true }],
+		ctx,
+		urlFor
+	);
+	const current = new Map([
+		['0:geopotential_height_500hPa:vector', 'u/geopotential_height_500hPa'],
+		['1:cloud_cover_low:raster', 'u/x']
+	]);
+	expect(planOverlayUpdates(current, desired)).toEqual({
+		update: [],
+		remove: ['1:cloud_cover_low:raster']
+	});
 	expect(planOverlayUpdates(new Map(), desired).update).toHaveLength(1);
 });
 ```
@@ -398,6 +469,7 @@ git commit -m "feat(compositions): rendu des superpositions via des SlotManager 
 ### Task 5 : Interface « Compositions » (barre latérale + mobile)
 
 **Files:**
+
 - Create: `src/lib/components/composition/composition-panel.svelte` (assemble les deux blocs)
 - Create: `src/lib/components/composition/preset-list.svelte` (compositions toutes faites + enregistrées)
 - Create: `src/lib/components/composition/composition-editor.svelte` (composition actuelle)
@@ -407,10 +479,12 @@ git commit -m "feat(compositions): rendu des superpositions via des SlotManager 
 - Test: `src/lib/tests/composition-panel.test.ts` (logique de tri/regroupement extraite dans `src/lib/composition-list.ts` si non triviale)
 
 **Interfaces:**
+
 - Consumes: Task 1 (`chartPresets`, `PRESET_GROUP_ORDER`), Task 2 (`isSourceAvailable`, `splitChartSources`), Task 3 (stores et actions), `metaJson` (`stores/time.ts`), `buildVariableList` / `groupVariablesByCategory` (`layer-list.ts`), `translateVariableLabel` (`i18n/variables-fr.ts`), `variableHasDirections`.
 - Produces: `groupPresets(presets: ChartPreset[], metaVariables: readonly string[] | undefined): { group: string; items: { preset: ChartPreset; available: boolean }[] }[]` dans `src/lib/composition-list.ts` (groupes dans l'ordre de `PRESET_GROUP_ORDER`, indisponibles en bas de groupe, comme `chart-list.svelte` d'upstream).
 
 Comportement attendu (copie visible exacte) :
+
 - **Liste** : titres de groupe repliables (état persisté `composition-groups-open`, comme upstream), composition active cochée (`activePresetId`), composition indisponible sur le domaine grisée et non cliquable avec le titre « Variables indisponibles sur ce modèle ». Groupe « Mes compositions » ouvert par défaut, avec une croix « Supprimer » par entrée.
 - **Composition actuelle** :
   - ligne du fond (libellé traduit de `variable`, mention « fond », non supprimable) ;
@@ -425,14 +499,23 @@ Comportement attendu (copie visible exacte) :
 
 ```ts
 it('ordonne les groupes et descend les indisponibles', () => {
-	const groups = groupPresets(chartPresets, ['temperature_850hPa', 'geopotential_height_500hPa', 'pressure_msl', 'temperature_2m']);
-	expect(groups.map((g) => g.group)).toEqual(PRESET_GROUP_ORDER.filter((g) => groups.some((x) => x.group === g)));
+	const groups = groupPresets(chartPresets, [
+		'temperature_850hPa',
+		'geopotential_height_500hPa',
+		'pressure_msl',
+		'temperature_2m'
+	]);
+	expect(groups.map((g) => g.group)).toEqual(
+		PRESET_GROUP_ORDER.filter((g) => groups.some((x) => x.group === g))
+	);
 	const synoptique = groups.find((g) => g.group === 'Synoptique')!;
 	expect(synoptique.items[0].available).toBe(true);
 	expect(synoptique.items.at(-1)!.available).toBe(false);
 });
 it('meta non chargé : tout indisponible', () => {
-	expect(groupPresets(chartPresets, undefined).every((g) => g.items.every((i) => !i.available))).toBe(true);
+	expect(
+		groupPresets(chartPresets, undefined).every((g) => g.items.every((i) => !i.available))
+	).toBe(true);
 });
 ```
 
@@ -454,6 +537,7 @@ git commit -m "feat(compositions): panneau Compositions (liste, éditeur, enregi
 ### Task 6 : Documentation et vérification de bout en bout
 
 **Files:**
+
 - Modify: `.claude/rules/architecture.md` (nouvelle section « Compositions (fond + superpositions) » : modèle additif, `OverlayStack`, règles de neutralisation, paramètre `overlays`, hors périmètre v1)
 - Modify: `.claude/rules/components.md` (dossier `components/composition/`)
 - Modify: `.claude/rules/stores.md` (`composition-overlays`, `saved-compositions`, `composition-groups-open`)

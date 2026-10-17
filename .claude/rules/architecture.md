@@ -37,6 +37,16 @@ Le style des contours et des flèches n'est plus codé en dur : il est défini d
 
 `changeOMfileURL()` ne recharge le **primaire** (raster + vecteur) que si `getOMUrl()` diffère de `currentOmUrl` ; la **couche 2** a sa propre déduplication (`currentOmUrl2 !== omUrl2`) et se rafraîchit indépendamment, même quand le primaire n'a pas bougé (changement de variable/activation de l'overlay). Pour forcer un rechargement primaire, invalider `currentOmUrl` (le mettre à `''`) ou changer un paramètre qui alimente `getOMUrl()`.
 
+## Compositions (fond + superpositions)
+
+Portage des « Combined charts » d'open-meteo/maps (#361), en **modèle additif** : le **fond** reste la variable principale (`variable`), rendue par le pipeline historique (`rasterManager`, `vectorManager`, overlay vent, couche 2) ; les **superpositions** (store `overlays`, `ChartSource[]`) s'y **ajoutent** via l'`OverlayStack` (`overlay-stack.ts`, détail de rendu, signatures et z-order dans « Superpositions de composition » ci-dessus ; coordinateur de commit dans `commit-group.ts`). Aucune superposition = aucun changement (URL, couches, popup, commit). Logique pure dans `composition.ts` (`splitChartSources`, `matchPresetComposition`, `effectiveOverlayFlags`, `isSourceAvailable`), presets dans `chart-presets.ts`, (dé)sérialisation dans `chart-encoding.ts`.
+
+**Règles de neutralisation** (`effectiveOverlayFlags`, jamais de doublon avec le fond) : un aplat (`raster`) sur la variable du fond est ignoré ; des isolignes sur la variable du fond sont ignorées si le fond dessine déjà ses contours (`primaryContours`) ; des flèches sont ignorées si elles seraient déjà dessinées par l'`arrowManager` (variable du fond, ou `wind_u_component_<niveau>` du niveau résolu par `resolveWindArrowLevel()`, quand `primaryArrows`) ou si la variable n'a pas de direction (`variableHasDirections`). Une source dont la variable n'existe pas dans le modèle courant (`isSourceAvailable`) n'est pas rendue et apparaît grisée dans l'UI ; elle réapparaît au retour sur un modèle qui la publie. `getOverlayOmUrl` renvoie `undefined` sur `ANOMALY_DOMAIN`.
+
+**Paramètre d'URL `overlays`** : même grammaire que `sources` (`variable[:drapeaux]`, ex. `overlays=geopotential_height_500hPa:c12.5`), omis quand la liste est vide. `urlParamsToPreferences()` le parse (valeur invalide → toast, ignorée) ; `updateUrl` l'écrit via `serializeSources`. Le fond voyage dans le paramètre `variable` habituel.
+
+**Hors périmètre v1** : `inlineVectors` (ignoré), superpositions sur `ANOMALY_DOMAIN`, lecture du popup/survol sur les superpositions (il lit toujours le fond et l'overlay vent), synchronisation des compositions enregistrées entre appareils (localStorage seul).
+
 ## Routes
 
 Single page app: `src/routes/+page.svelte` is the entry; `+layout.ts` opts out of SSR (`export const prerender = true` / no server logic). Adding new routes is unusual — most features become components under `src/lib/components/`.
