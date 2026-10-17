@@ -5,6 +5,7 @@ import * as maplibregl from 'maplibre-gl';
 import { toast } from 'svelte-sonner';
 
 import { basemapTheme } from '$lib/stores/basemap-theme';
+import { overlays } from '$lib/stores/composition';
 import { map as m } from '$lib/stores/map';
 import { omProtocolSettings } from '$lib/stores/om-protocol-settings';
 import { loading, opacity, opacity2, preferences as p } from '$lib/stores/preferences';
@@ -20,6 +21,7 @@ import {
 import { gridValues, vectorOptions as vO } from '$lib/stores/vector';
 import { arrowStyle, contourStyle } from '$lib/stores/vector-styles';
 
+import { CommitGroup } from '$lib/commit-group';
 import {
 	ANOMALY_DOMAIN,
 	BEFORE_LAYER_RASTER,
@@ -28,6 +30,13 @@ import {
 	BEFORE_LAYER_VECTOR_WATER_CLIP,
 	HILLSHADE_LAYER
 } from '$lib/constants';
+import { DEPARTMENTS_LAYER_ID } from '$lib/departments-layer';
+import {
+	type OverlayLayerPlan,
+	OverlayStack,
+	desiredOverlayLayers,
+	ensureAnchorLayer
+} from '$lib/overlay-stack';
 import { SLOT_EVENT_COMMIT, SLOT_EVENT_ERROR, slotEvents } from '$lib/slot-events';
 import { type SlotLayer, SlotManager } from '$lib/slot-manager';
 import {
@@ -51,6 +60,7 @@ import {
 	anomalyPhase,
 	getOMUrl,
 	getOMUrlFor,
+	getOverlayOmUrl,
 	getWindOverlayUrl,
 	provisionalDateSet,
 	resolveWindArrowLevel
@@ -86,10 +96,12 @@ const getContourStyle = (): ContourStyle => get(contourStyle);
 // Layer definitions
 // =============================================================================
 
-const rasterLayer = (): SlotLayer => ({
-	id: 'omRasterLayer',
+// Paramétré pour les aplats de superposition (identifiant unique, opacité
+// multipliée par celle de la source).
+const rasterLayer = (id = 'omRasterLayer', commitOpacity = getRasterOpacity()): SlotLayer => ({
+	id,
 	opacityProp: 'raster-opacity',
-	commitOpacity: getRasterOpacity(),
+	commitOpacity,
 	add: (map, sourceId, layerId, beforeLayer) => {
 		map.addLayer(
 			{
@@ -139,15 +151,29 @@ const rasterLayer2 = (): SlotLayer => ({
 //    variable affichée est elle-même du vent.
 // Le garde `arrowsOnOverlay !== forOverlay` évite de dessiner les
 // flèches en double et laisse contours/étiquettes du vectorManager suivre la variable.
-const vectorArrowLayer = (forOverlay: boolean): SlotLayer => ({
-	id: forOverlay ? 'omWindOverlayArrowLayer' : 'omVectorArrowLayer',
+const vectorArrowLayer = (forOverlay: boolean): SlotLayer =>
+	arrowLayer(forOverlay ? 'omWindOverlayArrowLayer' : 'omVectorArrowLayer', () => {
+		if (!get(vO).arrows) return false;
+		const arrowsOnOverlay = resolveWindArrowLevel() !== null;
+		return arrowsOnOverlay === forOverlay;
+	});
+
+/** Épaisseur multipliée par `factor` (superpositions : `ChartSource.lineWidth`). */
+const scaleWidth = (
+	width: maplibregl.ExpressionSpecification | number,
+	factor: number
+): maplibregl.ExpressionSpecification | number => {
+	if (factor === 1) return width;
+	return typeof width === 'number' ? width * factor : ['*', factor, width];
+};
+
+/** Couche de flèches sur la source-layer `wind-arrows`, ajoutée si `shouldAdd()`. */
+const arrowLayer = (id: string, shouldAdd: () => boolean, lineWidth = 1): SlotLayer => ({
+	id,
 	opacityProp: 'line-opacity',
 	commitOpacity: 1,
 	add: (map, sourceId, layerId, beforeLayer) => {
-		const vectorOptions = get(vO);
-		if (!vectorOptions.arrows) return;
-		const arrowsOnOverlay = resolveWindArrowLevel() !== null;
-		if (arrowsOnOverlay !== forOverlay) return;
+		if (!shouldAdd()) return;
 		map.addLayer(
 			{
 				id: layerId,
@@ -158,7 +184,7 @@ const vectorArrowLayer = (forOverlay: boolean): SlotLayer => ({
 					'line-opacity': 0,
 					'line-opacity-transition': { duration: 200, delay: 0 },
 					'line-color': buildArrowColorExpr(getArrowStyle(), isDark()),
-					'line-width': buildArrowWidthExpr(getArrowStyle())
+					'line-width': scaleWidth(buildArrowWidthExpr(getArrowStyle()), lineWidth)
 				},
 				layout: { 'line-cap': 'round' }
 			},
@@ -192,13 +218,20 @@ const vectorGridLayer = (): SlotLayer => ({
 	}
 });
 
-const vectorContourLayer = (): SlotLayer => ({
-	id: 'omVectorContourLayer',
+/** Isolignes d'une superposition : présence décidée par le plan, pas par le
+ *  toggle principal `vectorOptions.contours`. */
+interface OverlayContourOptions {
+	id: string;
+	variable: string;
+	lineWidth?: number;
+}
+
+const vectorContourLayer = (overlay?: OverlayContourOptions): SlotLayer => ({
+	id: overlay?.id ?? 'omVectorContourLayer',
 	opacityProp: 'line-opacity',
 	commitOpacity: 1,
 	add: (map, sourceId, layerId, beforeLayer) => {
-		const vectorOptions = get(vO);
-		if (!vectorOptions.contours) return;
+		if (!overlay && !get(vO).contours) return;
 		map.addLayer(
 			{
 				id: layerId,
@@ -209,7 +242,10 @@ const vectorContourLayer = (): SlotLayer => ({
 					'line-opacity': 0,
 					'line-opacity-transition': { duration: 200, delay: 0 },
 					'line-color': buildContourColorExpr(getContourStyle(), isDark()),
-					'line-width': buildContourWidthExpr(getContourStyle())
+					'line-width': scaleWidth(
+						buildContourWidthExpr(getContourStyle()),
+						overlay?.lineWidth ?? 1
+					)
 				}
 			},
 			beforeLayer
@@ -217,13 +253,14 @@ const vectorContourLayer = (): SlotLayer => ({
 	}
 });
 
-const vectorContourLabelsLayer = (): SlotLayer => ({
-	id: 'omVectorContourLayerLabels',
+const vectorContourLabelsLayer = (overlay?: OverlayContourOptions): SlotLayer => ({
+	id: overlay ? `${overlay.id}Labels` : 'omVectorContourLayerLabels',
 	opacityProp: 'text-opacity',
 	commitOpacity: 1,
 	add: (map, sourceId, layerId, beforeLayer) => {
-		const vectorOptions = get(vO);
-		if (!vectorOptions.contours) return;
+		if (!overlay && !get(vO).contours) return;
+		// Étiquettes dans l'unité d'affichage de la variable de la couche.
+		const variable = overlay?.variable ?? get(displayedVariable);
 		map.addLayer(
 			{
 				id: layerId,
@@ -243,9 +280,8 @@ const vectorContourLabelsLayer = (): SlotLayer => ({
 					'text-max-angle': 180,
 					'text-font': ['Noto Sans Regular'],
 					'text-field': buildContourLabelExpr(
-						get(displayedVariable),
-						getColorScale(get(displayedVariable), isDark(), get(omProtocolSettings).colorScales)
-							.unit,
+						variable,
+						getColorScale(variable, isDark(), get(omProtocolSettings).colorScales).unit,
 						get(unitPreferences)
 					),
 					'text-padding': 1
@@ -350,47 +386,25 @@ const vectorGridValuesLayer = (): SlotLayer => ({
 // Coordinateur de commit : fade-in synchronisé des couches actives
 // =============================================================================
 
-/** Managers dont on attend le commit groupé pour le tick courant. */
-let commitGroup: Set<SlotManager> | null = null;
+// Logique dans `commit-group.ts` (testable sans carte) ; wrappers locaux pour
+// garder les points d'appel inchangés.
+const commitGroup = new CommitGroup<SlotManager>({
+	onSettled: () => loading.set(false),
+	onFlushed: () => refreshPopup()
+});
 
 /** Démarre un nouveau groupe : appeler AVANT les `update()` correspondants. */
-const beginCommitGroup = (managers: SlotManager[]): void => {
-	commitGroup = managers.length > 0 ? new Set(managers) : null;
-	if (!commitGroup) loading.set(false);
-};
+const beginCommitGroup = (managers: SlotManager[], keep?: (mgr: SlotManager) => boolean): void =>
+	commitGroup.begin(managers, keep);
 
 /** Appelé par chaque manager (onReady) : committe tout le groupe quand tous sont prêts. */
-const tryFlushGroup = (): void => {
-	if (!commitGroup) return;
-	const members = [...commitGroup];
-	if (members.every((mgr) => mgr.isReady())) {
-		for (const mgr of members) mgr.commitNow();
-		commitGroup = null;
-		loading.set(false);
-		refreshPopup();
-	}
-};
+const tryFlushGroup = (): void => commitGroup.tryFlush();
 
 /** Ajoute un manager au groupe de commit courant, ou démarre un groupe s'il n'y en a pas. */
-const addToCommitGroup = (mgr: SlotManager): void => {
-	if (commitGroup) commitGroup.add(mgr);
-	else commitGroup = new Set([mgr]);
-};
+const addToCommitGroup = (mgr: SlotManager): void => commitGroup.add(mgr);
 
 /** Appelé par un manager en erreur : on le retire du groupe pour ne pas bloquer les autres. */
-const dropFromGroup = (mgr: SlotManager): void => {
-	if (!commitGroup) {
-		loading.set(false);
-		return;
-	}
-	commitGroup.delete(mgr);
-	if (commitGroup.size === 0) {
-		commitGroup = null;
-		loading.set(false);
-		return;
-	}
-	tryFlushGroup();
-};
+const dropFromGroup = (mgr: SlotManager): void => commitGroup.drop(mgr);
 
 // =============================================================================
 // Manager instances
@@ -432,6 +446,83 @@ const resolveVectorBeforeLayer = (map: maplibregl.Map, clipWater: boolean): stri
 	clipWater && map.getLayer(BEFORE_LAYER_VECTOR_WATER_CLIP)
 		? BEFORE_LAYER_VECTOR_WATER_CLIP
 		: BEFORE_LAYER_VECTOR;
+
+// =============================================================================
+// Superpositions de composition (isolignes, flèches, aplats sur le fond)
+// =============================================================================
+
+// Un SlotManager par couche de superposition (cf. overlay-stack.ts). Recréée à
+// chaque `addOmFileLayers` (un rechargement de style efface sources et couches).
+let overlayStack: OverlayStack | undefined;
+
+/** URL affichée de chaque superposition, dans l'ordre de la liste (infobulle). */
+export const getOverlayValueSources = (): { variable: string; url: string }[] =>
+	overlayStack?.activeSources() ?? [];
+
+/**
+ * Ancre des aplats de superposition : couche invisible posée sous toutes les
+ * couches vecteur (et sous les départements), au-dessus de l'aplat principal.
+ * `BEFORE_LAYER_RASTER_SECONDARY` vaut `BEFORE_LAYER_VECTOR` : ancrés là, les
+ * aplats recouvriraient isolignes, flèches et étiquettes insérées avant eux.
+ */
+const OVERLAY_RASTER_ANCHOR = 'omOverlayRasterAnchor';
+
+/** À appeler quand aucune couche vecteur OMfile n'est encore posée (après `setStyle`). */
+const ensureOverlayRasterAnchor = (map: maplibregl.Map): void =>
+	ensureAnchorLayer(
+		map,
+		OVERLAY_RASTER_ANCHOR,
+		map.getLayer(DEPARTMENTS_LAYER_ID)
+			? DEPARTMENTS_LAYER_ID
+			: resolveVectorBeforeLayer(map, get(p).clipWater)
+	);
+
+/** Couches MapLibre d'une superposition, via les builders du pipeline principal. */
+const overlayLayers = (plan: OverlayLayerPlan, tag: string): SlotLayer[] => {
+	const { source, flags } = plan;
+	if (plan.kind === 'raster') {
+		return [rasterLayer(`omOverlayRaster_${tag}`, getRasterOpacity() * (source.opacity ?? 1))];
+	}
+	const lineWidth = source.lineWidth ?? 1;
+	const layers: SlotLayer[] = [];
+	// Flèches d'abord : insérées avant le même ancrage, elles restent sous les isolignes.
+	if (flags.arrows) layers.push(arrowLayer(`omOverlayArrows_${tag}`, () => true, lineWidth));
+	if (flags.contours) {
+		const contour = { id: `omOverlayContour_${tag}`, variable: source.variable, lineWidth };
+		layers.push(vectorContourLayer(contour), vectorContourLabelsLayer(contour));
+	}
+	return layers;
+};
+
+const buildOverlayStack = (map: maplibregl.Map): OverlayStack =>
+	new OverlayStack(map, {
+		onReady: tryFlushGroup,
+		// Pas de toast : une superposition absente du domaine (404) disparaît
+		// simplement (clearOnError), sans bloquer le commit des autres couches.
+		onError: (mgr) => dropFromGroup(mgr),
+		// Détruit alors qu'il attendait dans le groupe : ne doit pas bloquer le flush.
+		onDestroy: (mgr) => commitGroup.forget(mgr),
+		rasterBefore: () =>
+			map.getLayer(OVERLAY_RASTER_ANCHOR) ? OVERLAY_RASTER_ANCHOR : BEFORE_LAYER_RASTER_SECONDARY,
+		vectorBefore: () => resolveVectorBeforeLayer(map, get(p).clipWater),
+		layers: overlayLayers
+	});
+
+/** Plan des superpositions pour l'échéance et le domaine courants. */
+const overlayPlans = (): OverlayLayerPlan[] => {
+	const vectorOptions = get(vO);
+	return desiredOverlayLayers(
+		get(overlays),
+		{
+			primary: get(displayedVariable),
+			primaryContours: vectorOptions.contours,
+			primaryArrows: vectorOptions.arrows,
+			windArrowLevel: resolveWindArrowLevel(),
+			metaVariables: get(mJ)?.variables
+		},
+		getOverlayOmUrl
+	);
+};
 
 export const createManagers = (): void => {
 	const map = get(m);
@@ -519,6 +610,9 @@ export const addOmFileLayers = (): void => {
 	if (!map) return;
 	const omUrl = getOMUrl();
 	createManagers();
+	overlayStack?.destroyAll();
+	overlayStack = buildOverlayStack(map);
+	ensureOverlayRasterAnchor(map);
 	if (!omUrl) return;
 
 	const group: SlotManager[] = [];
@@ -541,6 +635,10 @@ export const addOmFileLayers = (): void => {
 		}
 	}
 
+	// Superpositions : après les managers principaux dans le groupe de commit.
+	const overlayLoads = overlayStack.sync(overlayPlans());
+	for (const { manager } of overlayLoads) group.push(manager);
+
 	loading.set(true);
 	beginCommitGroup(group);
 	rasterManager?.update('om://' + omUrl);
@@ -550,6 +648,7 @@ export const addOmFileLayers = (): void => {
 	else arrowManager?.destroy();
 	vectorManager?.update('om://' + omUrl);
 	if (raster2Url) rasterManager2?.update('om://' + raster2Url);
+	for (const { manager, url } of overlayLoads) manager.update('om://' + url);
 };
 
 export const changeOMfileURL = (vectorOnly = false, rasterOnly = false): void => {
@@ -620,6 +719,14 @@ export const changeOMfileURL = (vectorOnly = false, rasterOnly = false): void =>
 		}
 	}
 
+	// Superpositions : le plan est recalculé à chaque appel (les URL suivent
+	// l'échéance) ; seules les couches dont l'URL change sont rechargées, les
+	// couches retirées sont détruites tout de suite. Ajoutées au groupe APRÈS les
+	// managers principaux. Sans superposition : liste vide, rien ne change.
+	const primaryCount = group.length;
+	const overlayLoads = overlayStack?.sync(overlayPlans()) ?? [];
+	for (const { manager } of overlayLoads) group.push(manager);
+
 	// Effacer les flèches d'overlay avant l'éventuel early-return : éteindre l'overlay
 	// ne doit pas laisser des flèches figées à l'écran, même si rien d'autre ne change.
 	if (clearArrows) arrowManager?.destroy();
@@ -628,12 +735,23 @@ export const changeOMfileURL = (vectorOnly = false, rasterOnly = false): void =>
 	if (group.length === 0) return;
 
 	loading.set(true);
-	beginCommitGroup(group);
+	if (primaryCount > 0) {
+		// Les superpositions encore en vol mais non rechargées ici (URL inchangée)
+		// sont reportées dans le nouveau groupe : sinon leur commit différé serait
+		// perdu et elles resteraient invisibles. Sans superposition : aucun report.
+		beginCommitGroup(group, (mgr) => overlayStack?.owns(mgr) ?? false);
+	} else {
+		// Seules des superpositions changent : on les fusionne dans le groupe en vol
+		// (comme reloadVectorStyle) au lieu de l'écraser, sinon un chargement
+		// principal en attente ne serait jamais committé.
+		for (const mgr of group) addToCommitGroup(mgr);
+	}
 	if (rasterUrl) rasterManager?.update('om://' + rasterUrl);
 	// arrowManager AVANT vectorManager (z-order : flèches sous contours/étiquettes).
 	if (arrowUrl) arrowManager?.update('om://' + arrowUrl);
 	if (vectorUrl) vectorManager?.update('om://' + vectorUrl);
 	if (raster2Url) rasterManager2?.update('om://' + raster2Url);
+	for (const { manager, url } of overlayLoads) manager.update('om://' + url);
 };
 
 /**
@@ -652,7 +770,13 @@ export const reloadVectorStyle = (): void => {
 	// L'overlay vent a son propre manager : recharger aussi ses flèches pour qu'une
 	// édition du style des flèches (arrowStyle) soit prise en compte quand il est actif.
 	const arrowUrl = arrowManager?.getActiveSourceUrl();
-	if ((!url || !vectorManager) && !(arrowUrl && arrowManager)) return;
+	// Isolignes/flèches des superpositions : même reconstruction (style, unités).
+	const overlayVectors = (overlayStack?.vectorManagers() ?? []).flatMap((mgr) => {
+		const activeUrl = mgr.getActiveSourceUrl();
+		return activeUrl ? [{ mgr, activeUrl }] : [];
+	});
+	if ((!url || !vectorManager) && !(arrowUrl && arrowManager) && overlayVectors.length === 0)
+		return;
 	loading.set(true);
 	// Fusionne dans un éventuel groupe en vol (ne pas écraser : sinon raster/raster2
 	// resteraient différés indéfiniment, figés sur l'ancienne donnée).
@@ -663,5 +787,9 @@ export const reloadVectorStyle = (): void => {
 	if (arrowUrl && arrowManager) {
 		addToCommitGroup(arrowManager);
 		arrowManager.update(arrowUrl);
+	}
+	for (const { mgr, activeUrl } of overlayVectors) {
+		addToCommitGroup(mgr);
+		mgr.update(activeUrl);
 	}
 };

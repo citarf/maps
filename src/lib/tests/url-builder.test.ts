@@ -9,7 +9,8 @@ import {
 	windOverlayLevel
 } from '$lib/stores/vector';
 
-import { getOMUrl, getOMUrlFor, getWindOverlayUrl } from '$lib/url';
+import { ANOMALY_DOMAIN } from '$lib/constants';
+import { getOMUrl, getOMUrlFor, getOverlayOmUrl, getWindOverlayUrl } from '$lib/url';
 
 describe('getOMUrlFor', () => {
 	beforeEach(() => {
@@ -209,5 +210,51 @@ describe('getWindOverlayUrl — fallback « selon la variable affichée »', () 
 		vectorOptions.update((o) => ({ ...o, arrows: false }));
 		v.set('temperature_2m');
 		expect(getWindOverlayUrl()).toBeUndefined();
+	});
+});
+
+describe('getOverlayOmUrl', () => {
+	beforeEach(() => {
+		d.set('meteofrance_arome_france_hd');
+		mR.set(new Date('2026-05-23T00:00:00Z'));
+		time.set(new Date('2026-05-23T15:00:00Z'));
+		v.set('temperature_2m');
+		vectorOptions.set({ ...defaultVectorOptions, grid: true });
+	});
+
+	afterEach(() => {
+		vectorOptions.set(defaultVectorOptions);
+		d.set('meteofrance_arome_france_hd');
+	});
+
+	it('getOverlayOmUrl : isolignes à intervalle fixe, sans grille', () => {
+		const url = getOverlayOmUrl(
+			{ variable: 'pressure_msl', contours: true, contourInterval: 2 },
+			{ contours: true, arrows: false }
+		);
+		expect(url).toContain('variable=pressure_msl');
+		expect(url).toContain('&contours=true');
+		expect(url).toContain('&intervals=2');
+		expect(url).not.toContain('grid=true');
+	});
+
+	it('getOverlayOmUrl : isolignes sur les paliers de l’échelle → pas d’intervals', () => {
+		vectorOptions.set({ ...defaultVectorOptions, breakpoints: false, contourInterval: 5 });
+		expect(
+			getOverlayOmUrl(
+				{ variable: 'pressure_msl', contours: true },
+				{ contours: true, arrows: false }
+			)
+		).not.toContain('intervals=');
+	});
+
+	it('getOverlayOmUrl : rien sur le domaine anomalie', () => {
+		d.set(ANOMALY_DOMAIN);
+		expect(
+			getOverlayOmUrl(
+				{ variable: 'pressure_msl', contours: true },
+				{ contours: true, arrows: false }
+			)
+		).toBeUndefined();
 	});
 });

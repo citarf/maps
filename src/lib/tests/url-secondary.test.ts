@@ -1,7 +1,9 @@
 import { get } from 'svelte/store';
 
-import { beforeEach, describe, expect, it } from 'vitest';
+import { toast } from 'svelte-sonner';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { overlays } from '$lib/stores/composition';
 import { opacity2, url as urlStore } from '$lib/stores/preferences';
 import { layer2Enabled, variable2 } from '$lib/stores/variables';
 
@@ -29,5 +31,30 @@ describe('urlParamsToPreferences — 2nd layer', () => {
 		expect(u.searchParams.get('variable2')).toBeNull();
 		expect(u.searchParams.get('opacity2')).toBeNull();
 		expect(u.searchParams.get('layer2')).toBeNull();
+	});
+});
+
+vi.mock('svelte-sonner', () => ({ toast: vi.fn() }));
+
+describe('urlParamsToPreferences — overlays', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		overlays.set([]);
+	});
+
+	it("hydrate overlays depuis l'URL", () => {
+		urlStore.set(new URL('http://localhost/?overlays=pressure_msl:c2'));
+		urlParamsToPreferences();
+		expect(get(overlays)).toEqual([
+			{ variable: 'pressure_msl', contours: true, contourInterval: 2 }
+		]);
+	});
+
+	it('ignore un paramètre overlays invalide et prévient', () => {
+		overlays.set([{ variable: 'pressure_msl', contours: true }]);
+		urlStore.set(new URL('http://localhost/?overlays=%25%25%25'));
+		urlParamsToPreferences();
+		expect(get(overlays)).toEqual([{ variable: 'pressure_msl', contours: true }]);
+		expect(toast).toHaveBeenCalled();
 	});
 });

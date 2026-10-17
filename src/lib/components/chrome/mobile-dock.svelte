@@ -5,6 +5,7 @@
 	import { pointWorkspace } from '$lib/stores/point-workspace';
 	import { bottomChromeHeight } from '$lib/stores/preferences';
 
+	import CompositionPanel from '$lib/components/composition/composition-panel.svelte';
 	import * as Sheet from '$lib/components/ui/sheet';
 
 	import LayerList from './layer-list.svelte';
@@ -82,6 +83,11 @@
 			{#if activeTab === 'layers'}
 				<div class="mb-3 flex justify-center"><ModelSelector /></div>
 				<LayerList />
+				<div class="my-4 border-t border-white/10"></div>
+				<div class="mb-2 px-2 text-xs font-semibold tracking-wide text-white/45 uppercase">
+					Compositions
+				</div>
+				<CompositionPanel />
 			{:else}
 				{@render display?.()}
 				<div class="mt-4">{@render style?.()}</div>
