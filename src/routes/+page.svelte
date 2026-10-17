@@ -10,6 +10,9 @@
 		updateCurrentBounds
 	} from '@openmeteo/weather-map-layer';
 	import * as maplibregl from 'maplibre-gl';
+	// MapLibre 6 (ESM) : sous un bundler, l'URL du worker doit être fournie
+	// explicitement, sinon « Worker failed to load » et aucune tuile ne s'affiche.
+	import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 	import 'maplibre-gl/dist/maplibre-gl.css';
 	import { toast } from 'svelte-sonner';
 
@@ -113,6 +116,7 @@
 			$localStorageVersion = version;
 		}
 
+		maplibregl.setWorkerUrl(maplibreWorkerUrl);
 		maplibregl.addProtocol('om', (params: RequestParameters, abortController: AbortController) =>
 			omProtocol(params, abortController, $omProtocolSettings)
 		);

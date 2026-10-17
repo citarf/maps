@@ -15,7 +15,7 @@ import { map as mStore } from '$lib/stores/map';
 
 import { BEFORE_LAYER_VECTOR, DEPARTMENTS_GEOJSON_URL } from './constants';
 
-import type maplibregl from 'maplibre-gl';
+import type * as maplibregl from 'maplibre-gl';
 
 export const DEPARTMENTS_SOURCE_ID = 'omDepartmentsSource';
 export const DEPARTMENTS_LAYER_ID = 'omDepartmentsLayer';

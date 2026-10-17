@@ -1,6 +1,6 @@
 import { get } from 'svelte/store';
 
-import maplibregl from 'maplibre-gl';
+import * as maplibregl from 'maplibre-gl';
 
 import { map } from '$lib/stores/map';
 import { preferences } from '$lib/stores/preferences';

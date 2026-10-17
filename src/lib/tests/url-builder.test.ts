@@ -30,6 +30,41 @@ describe('getOMUrlFor', () => {
 		expect(url).not.toContain('variable=temperature_2m');
 	});
 
+	describe('delta_time_hours (pluie en taux horaire)', () => {
+		afterEach(() => mJ.set(undefined));
+
+		const setValidTimes = (validTimes: string[]) =>
+			mJ.set({
+				completed: true,
+				last_modified_time: '',
+				reference_time: '2026-05-23T00:00:00Z',
+				valid_times: validTimes,
+				variables: ['precipitation', 'temperature_2m']
+			});
+
+		it('porte la durée du pas pour la pluie par pas de temps', () => {
+			setValidTimes(['2026-05-23T09:00Z', '2026-05-23T12:00Z', '2026-05-23T15:00Z']);
+			expect(getOMUrlFor('precipitation')).toContain('&delta_time_hours=3');
+			// pas de 15 min (AROME France HD 15 min)
+			setValidTimes(['2026-05-23T14:45Z', '2026-05-23T15:00Z']);
+			expect(getOMUrlFor('precipitation')).toContain('&delta_time_hours=0.25');
+		});
+
+		it('suit l’échéance demandée, pas celle du store', () => {
+			setValidTimes(['2026-05-23T14:00Z', '2026-05-23T15:00Z', '2026-05-23T18:00Z']);
+			expect(getOMUrlFor('rain')).toContain('&delta_time_hours=1');
+			expect(getOMUrlFor('rain', new Date('2026-05-23T18:00:00Z'))).toContain(
+				'&delta_time_hours=3'
+			);
+		});
+
+		it('absent pour les cumuls depuis le run et les autres variables', () => {
+			setValidTimes(['2026-05-23T12:00Z', '2026-05-23T15:00Z']);
+			expect(getOMUrlFor('precipitation_sum')).not.toContain('delta_time_hours');
+			expect(getOMUrlFor('temperature_2m')).not.toContain('delta_time_hours');
+		});
+	});
+
 	it('keeps the store-driven getOMUrl() in sync with the store', () => {
 		expect(getOMUrl()).toContain('variable=temperature_2m');
 	});
