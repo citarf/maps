@@ -1,7 +1,11 @@
 import { tick } from 'svelte';
 import { get } from 'svelte/store';
 
-import { defaultOmProtocolSettings } from '@openmeteo/weather-map-layer';
+import {
+	defaultOmProtocolSettings,
+	timeStepHoursAt,
+	variableUsesTimeStep
+} from '@openmeteo/weather-map-layer';
 import { mode } from 'mode-watcher';
 
 import { browser } from '$app/environment';
@@ -311,6 +315,14 @@ export const getOMUrlFor = (
 	const base = `${getBaseUri(domain)}/data_spatial/${domain}`;
 	let result = `${base}/${fmtModelRun(modelRun)}/${fmtSelectedTime(selectedTime)}.om`;
 	result += `?variable=${variable}`;
+
+	// Pluie, averses, neige… : le package les renvoie en taux horaire (mm/h) et
+	// divise le cumul stocké par la durée du pas. Sans `delta_time_hours`, la
+	// lecture est rejetée (calque vide, popup sans valeur).
+	if (variableUsesTimeStep(variable)) {
+		const step = timeStepHoursAt(selectedTime, get(mJ)?.valid_times);
+		if (step) result += `&delta_time_hours=${step}`;
+	}
 
 	// Variables catégorielles (codes entiers) : l'échantillonnage bilinéaire par
 	// défaut fabriquerait des codes intermédiaires inexistants. Le paramètre est

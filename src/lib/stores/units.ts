@@ -74,11 +74,7 @@ export function convertGeopotential(value: number, unit: GeopotentialUnit): numb
 }
 
 export type UnitCategory =
-	| 'temperature'
-	| 'precipitation'
-	| 'wind_speed'
-	| 'distance'
-	| 'geopotential';
+	'temperature' | 'precipitation' | 'wind_speed' | 'distance' | 'geopotential';
 
 /** Vrai pour les variables de hauteur géopotentielle (`geopotential_height_*`). */
 export function isGeopotentialVariable(variable: string): boolean {
@@ -100,6 +96,7 @@ export function getUnitCategory(baseUnit: string, variable?: string): UnitCatego
 		case 'K':
 			return 'temperature';
 		case 'mm':
+		case 'mm/h':
 			return 'precipitation';
 		case 'm/s':
 			return 'wind_speed';
@@ -153,7 +150,8 @@ export function getDisplayUnit(
 		case 'temperature':
 			return units.temperature;
 		case 'precipitation':
-			return units.precipitation;
+			// Taux horaire (pluie par pas, réflectivité convertie) : on garde le « /h ».
+			return baseUnit.endsWith('/h') ? `${units.precipitation}/h` : units.precipitation;
 		case 'wind_speed':
 			return units.windSpeed;
 		case 'distance':

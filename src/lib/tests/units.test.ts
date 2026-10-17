@@ -65,6 +65,18 @@ describe('convertValue', () => {
 });
 
 describe('getDisplayUnit / getUnitOptions', () => {
+	it('taux horaire (mm/h) : catégorie précipitations, « /h » conservé', () => {
+		expect(getUnitCategory('mm/h')).toBe('precipitation');
+		expect(getDisplayUnit('mm/h', prefs, 'precipitation')).toBe('mm/h');
+		expect(getDisplayUnit('mm/h', { ...prefs, precipitation: 'inch' }, 'precipitation')).toBe(
+			'inch/h'
+		);
+		expect(getDisplayUnit('mm', { ...prefs, precipitation: 'inch' }, 'precipitation_sum')).toBe(
+			'inch'
+		);
+		expect(convertValue(25.4, 'mm/h', { ...prefs, precipitation: 'inch' })).toBeCloseTo(1);
+	});
+
 	it('affiche gpdam et expose les options gpm/gpdam pour le géopotentiel', () => {
 		expect(getDisplayUnit('m', prefs, 'geopotential_height_500hPa')).toBe('gpdam');
 		expect(getUnitOptions('m', 'geopotential_height_500hPa')?.map((o) => o.value)).toEqual([

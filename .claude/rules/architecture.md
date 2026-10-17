@@ -11,7 +11,7 @@ paths:
 
 ## Custom `om://` MapLibre protocol
 
-The app registers a custom protocol with MapLibre in `src/routes/+page.svelte` (`maplibregl.addProtocol('om', ...)`) wired to `omProtocol` from `@openmeteo/weather-map-layer`. All sources use `om://<https-url-with-query-params>` URLs. Source URLs are constructed in `src/lib/url.ts → getOMUrl()`, which encodes the domain, model run, valid time, variable, vector toggles, tile size, dark mode, and stable hashes of clipping/color settings.
+The app registers a custom protocol with MapLibre in `src/routes/+page.svelte` (`maplibregl.addProtocol('om', ...)`) wired to `omProtocol` from `@openmeteo/weather-map-layer`. Just before, it calls `maplibregl.setWorkerUrl()` with the worker imported via Vite's `?worker&url` query: MapLibre 6 is ESM-only and cannot locate its worker inside a bundler on its own (« Worker failed to load », no tiles). All sources use `om://<https-url-with-query-params>` URLs. Source URLs are constructed in `src/lib/url.ts → getOMUrl()`, which encodes the domain, model run, valid time, variable, vector toggles, tile size, dark mode, and stable hashes of clipping/color settings.
 
 The dev/preview server in `vite.config.ts` injects `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp` headers — they enable `SharedArrayBuffer` for `@openmeteo/file-reader` (zero-copy sharing with tile workers). SAB is an optimisation, not a requirement: `fileReaderConfig.useSAB` comes from `canUseSharedArrayBuffer()` (`src/lib/shared-array-buffer.ts`), which returns false when the page isn't cross-origin isolated (Android WebView exposes the constructor but is never isolated) → plain `ArrayBuffer`s structured-cloned to workers. Never hard-code `useSAB: true` (which is excluded from Vite's `optimizeDeps` along with `@openmeteo/file-format-wasm`).
 
@@ -103,7 +103,7 @@ header-only du `postReadCallback` (`getNextOmUrls`, retiré).
 `prefetchData()`, `triggerPrefetch` **décode** ensuite chaque échéance voisine via
 `omProtocol({ url: 'om://' + getOMUrlFor(variable, neighborTime), type: 'json' }, …)` →
 peuple `state.data` dans le `stateByKey` de l'instance partagée (`getProtocolInstance`,
-rétention `MAX_STATES_WITH_DATA = 24`). Un saut ultérieur vers ce voisin réutilise la frame
+rétention `maxStatesWithData: 24` dans `omProtocolSettings`, contre 2 par défaut dans le package). Un saut ultérieur vers ce voisin réutilise la frame
 décodée au lieu de refaire la lecture + le décode. **L'URL est bâtie via le même
 `getOMUrlFor(variable, timeOverride)` que la source MapLibre** (`'om://' + getOMUrl()`) : c'est
 la condition pour que la clé du `stateByKey` matche — toute divergence de suffixe (dark,
@@ -159,7 +159,11 @@ Ces variables portent une `CategoricalColorScale` (`color-scales/types.ts`) : `b
 
 - **Classe 0 transparente** : sous le premier breakpoint, le moteur applique `colors[0]` (`Math.max(0, idx)`), **pas** la transparence. L'échelle commence donc par `0 → alpha 0`. L'ancienne échelle `precipitation_sum` teintait H0 à tort.
 - **Aplats discrets** : ne pas émettre `color_blend=true` (option 0.2.0 d'interpolation continue entre couleurs) pour ce cumul.
-- **Hors périmètre, volontairement inchangés** : `precipitation`, `rain`, `showers`, `snowfall_water_equivalent`, `graupel_sum`, `snow_graupel_sum` et `snowfall_water_equivalent_sum` gardent l'échelle `precipitation` du package ; `snowfall_sum` garde son échelle en cm.
+- **Hors périmètre, volontairement inchangés** : `precipitation`, `rain`, `showers` et `snowfall_water_equivalent` gardent l'échelle `precipitation` du package (en mm/h, voir ci-dessous) ; `graupel_sum`, `snow_graupel_sum` et `snowfall_water_equivalent_sum` gardent ses paliers et couleurs, avec l'unité ramenée en mm (`waterEquivalentSumScale`) ; `snowfall_sum` garde son échelle en cm.
+
+## Pluie par pas de temps en taux horaire (`delta_time_hours`)
+
+Depuis `weather-map-layer` 0.3.0, le reader renvoie `precipitation`, `rain`, `showers`, `snowfall`, `snowfall_water_equivalent` (et leurs `_mean`/`_spread`) **en taux horaire** : il divise le cumul stocké sur le pas par la durée du pas. Cette division n'est pas désactivable. Il lui faut la durée du pas, passée dans l'URL `om://` par `&delta_time_hours=…` : sans elle, la lecture est **rejetée** (calque vide, popup sans valeur). `getOMUrlFor` (`src/lib/url.ts`) l'ajoute pour toute variable où `variableUsesTimeStep(variable)` est vrai, à partir de `timeStepHoursAt(échéance, metaJson.valid_times)` ; l'échéance est celle demandée (`timeOverride`), pas celle du store. Le préchargement d'octets (`prefetch.ts`, `prefetchVariable`) n'en a pas besoin. Les cumuls depuis le run (`precipitation_sum`, `*_sum`) ne sont pas concernés. Côté affichage, l'unité `mm/h` relève de la catégorie précipitations (`stores/units.ts`) : conversion en pouces et suffixe « /h » conservé (`mm/h`, `inch/h`).
 
 ## Sondage vertical (Skew-T)
 

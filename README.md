@@ -25,10 +25,9 @@ Client SvelteKit qui rend des OMfiles via MapLibre GL — l'intégralité du ren
 
 Un seul paquet `@openmeteo/*` est consommé depuis un fork maison (voir `package.json`) :
 
-- **`@openmeteo/weather-map-layer` → `npm:@cm3r/weather-map-layer@0.2.0`** (fork publié npm, source : [`cmer81/weather-map-layer`](https://github.com/cmer81/weather-map-layer), base upstream `37136ba` = 0.1.0 + #301/#303/#306). Le fork est **rebasé sur l'upstream** et ne porte plus que ce qui est impossible à faire côté consommateur :
+- **`@openmeteo/weather-map-layer` → `npm:@cm3r/weather-map-layer@0.3.0`** (fork publié npm, source : [`cmer81/weather-map-layer`](https://github.com/cmer81/weather-map-layer), base upstream `v0.3.0`). Le fork est **rebasé sur l'upstream** et ne porte plus que ce qui est impossible à faire côté consommateur :
 
   - **`globalIndex`** — les points de la source-layer `grid` portent un **`id` global stable** (`globalIndex = rangée_globale·nx + colonne_globale`) au lieu de l'index local de la sous-grille rognée aux tuiles. Sans ça, un même nœud change d'`id` selon les tuiles chargées (`nx` du clip variable) → l'index de symboles inter-tuiles de MapLibre ne l'apparie plus (étiquettes qui se replacent au pan) et tout décodage `(i, j)` côté client produit des bandes horizontales sur les domaines monde. Le fork **découple** l'`id` (global, pour MapLibre) de l'index local (qui sert encore à lire la valeur). C'est ce qui permet la couche « valeurs aux points de grille » figée (voir `## Architecture`) — cf. `src/lib/layers.ts`, `buildGridDecimationFilter`.
-  - **`MAX_STATES_WITH_DATA` 2 → 24** — à 2, le look-ahead de décodage évince la frame affichée avant réutilisation (`getValueFromLatLong` lève « State not found »).
   - **`readRawVariable`** — lecture d'une variable telle que stockée, sans règle de dérivation ; le sondage a besoin des composantes `wind_u/v_component_*` brutes, que `readVariable` remplace par vitesse + direction (irrécupérables : interpoler une direction est faux à la couture 0°/360°).
   - **réexports** `defaultResolveRequest` + types `BreakpointColorScale` / `ColorScale` / `RGBA`, nécessaires pour surcharger `resolveRequest` et typer nos color scales.
 

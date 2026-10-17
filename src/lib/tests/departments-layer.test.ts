@@ -11,7 +11,7 @@ import {
 	refreshDepartments
 } from '$lib/departments-layer';
 
-import type maplibregl from 'maplibre-gl';
+import type * as maplibregl from 'maplibre-gl';
 
 const SAMPLE_FC = {
 	type: 'FeatureCollection',

@@ -157,6 +157,10 @@ describe('precipitation_type categorical scale', () => {
 });
 
 describe('arome_france_hd color scale resolution', () => {
+	const waterEquivalentSumScale = {
+		...defaultOmProtocolSettings.colorScales.precipitation,
+		unit: 'mm'
+	};
 	// Reproduit le sous-ensemble de `standardColorScales` (om-protocol-settings.ts)
 	// pertinent pour arome_france_hd, sans importer le store (deps browser). Le
 	// package résout via `getColorScale(variable, dark, source)` : une clé EXACTE
@@ -164,9 +168,9 @@ describe('arome_france_hd color scale resolution', () => {
 	const source = {
 		...defaultOmProtocolSettings.colorScales,
 		reflectivity_max: radarReflectivityScale,
-		graupel_sum: defaultOmProtocolSettings.colorScales.precipitation,
-		snow_graupel_sum: defaultOmProtocolSettings.colorScales.precipitation,
-		snowfall_water_equivalent_sum: defaultOmProtocolSettings.colorScales.precipitation,
+		graupel_sum: waterEquivalentSumScale,
+		snow_graupel_sum: waterEquivalentSumScale,
+		snowfall_water_equivalent_sum: waterEquivalentSumScale,
 		wind_chill_2m: infoclimatTemperatureScale,
 		humidex: infoclimatTemperatureScale
 	};

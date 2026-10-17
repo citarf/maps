@@ -64,13 +64,15 @@ describe('arome_france color scales', () => {
 });
 
 // Cumuls de grésil / neige en équivalent eau (arome_france_hd) : hors périmètre
-// de l'alignement Infoclimat (Q2 = B) → toujours l'échelle `precipitation` d'origine
-// du package, pas la nouvelle échelle à paliers.
+// de l'alignement Infoclimat (Q2 = B) → toujours les paliers de l'échelle
+// `precipitation` du package, pas la nouvelle échelle à paliers. Unité en mm : ce
+// sont des cumuls, alors que l'échelle du package est en mm/h depuis la 0.3.0.
 describe('arome_france_hd — cumuls en équivalent eau inchangés', () => {
 	it.each(['graupel_sum', 'snow_graupel_sum', 'snowfall_water_equivalent_sum'])('%s', (v) => {
-		expect(standardColorScales[v as keyof typeof standardColorScales]).toBe(
-			defaultOmProtocolSettings.colorScales.precipitation
-		);
+		expect(standardColorScales[v as keyof typeof standardColorScales]).toEqual({
+			...defaultOmProtocolSettings.colorScales.precipitation,
+			unit: 'mm'
+		});
 		expect(standardColorScales[v as keyof typeof standardColorScales]).not.toEqual(
 			standardColorScales.precipitation_sum
 		);

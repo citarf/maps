@@ -111,14 +111,19 @@ const customResolveRequest: typeof defaultResolveRequest = (urlComponents, setti
 /** Échelles de couleur « standard » de l'app (défaut du package + nos palettes
  *  infoclimat / anomalie), AVANT toute personnalisation utilisateur. Sert de
  *  référence pour le bouton « réinitialiser aux couleurs standard ». */
+const waterEquivalentSumScale = {
+	...defaultOmProtocolSettings.colorScales.precipitation,
+	unit: 'mm'
+};
+
 export const standardColorScales = {
 	...defaultOmProtocolSettings.colorScales,
 	temperature: infoclimatTemperatureScale,
 	temperature_2m_anomaly: temperatureAnomalyScale,
 	// Cumul du run : échelle 0,2 → 600 mm (clé exacte, prioritaire sur la
 	// résolution par famille ; couvre aussi `precipitation_sum_Nh`). La pluie par
-	// pas de temps (`precipitation`, `rain`, `showers`), `snowfall_water_equivalent`
-	// et les cumuls de grésil gardent volontairement l'échelle du package.
+	// pas de temps (`precipitation`, `rain`, `showers`) et `snowfall_water_equivalent`,
+	// que le package renvoie en taux horaire (mm/h), gardent son échelle `precipitation`.
 	// Voir color-scales/precipitation.ts.
 	precipitation_sum: precipitationSumScale,
 
@@ -143,16 +148,18 @@ export const standardColorScales = {
 	// par famille/fallback du package les mappe sur une échelle absurde :
 	//   - `*_sum` n'est PAS strippé → graupel_sum / snow_graupel_sum /
 	//     snowfall_water_equivalent_sum tombent sur le fallback `temperature` (°C) alors
-	//     que ce sont des cumuls en mm. → échelle `precipitation` (mm).
+	//     que ce sont des cumuls en mm. → paliers et couleurs de l'échelle
+	//     `precipitation` du package, unité ramenée en mm (elle est en mm/h depuis
+	//     la 0.3.0, qui renvoie la pluie par pas en taux horaire).
 	//   - `reflectivity_max` → fallback `temperature` (°C) au lieu de dBZ radar.
 	//   - `wind_chill_2m` → famille `wind` (m/s) alors que c'est une température
 	//     ressentie (°C). → échelle température infoclimat.
 	// (`humidex` tombe déjà sur le fallback `temperature` = infoclimat °C, ce qui est
 	//  correct pour un indice en °C ; on le fige ici pour ne pas dépendre du fallback.)
 	reflectivity_max: radarReflectivityScale,
-	graupel_sum: defaultOmProtocolSettings.colorScales.precipitation,
-	snow_graupel_sum: defaultOmProtocolSettings.colorScales.precipitation,
-	snowfall_water_equivalent_sum: defaultOmProtocolSettings.colorScales.precipitation,
+	graupel_sum: waterEquivalentSumScale,
+	snow_graupel_sum: waterEquivalentSumScale,
+	snowfall_water_equivalent_sum: waterEquivalentSumScale,
 	wind_chill_2m: infoclimatTemperatureScale,
 	humidex: infoclimatTemperatureScale,
 
@@ -213,6 +220,10 @@ export const omProtocolSettings: Writable<OmProtocolSettings> = writable({
 		cache: createBlockCache()
 	},
 	resolveRequest: customResolveRequest,
+	// Défaut du package : 2 états décodés par variable. Le préchargement des
+	// échéances voisines en décode plusieurs par navigation : à 2, la frame affichée
+	// est évincée avant réutilisation et `getValueFromLatLong` lève « State not found ».
+	maxStatesWithData: 24,
 
 	// dynamic (can be changed during runtime)
 	// `standardColorScales` (défaut + palettes infoclimat/anomalie) surchargé par
