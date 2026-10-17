@@ -22,7 +22,12 @@
 		saveCurrentComposition,
 		updateOverlay
 	} from '$lib/composition-actions';
-	import { parseInterval, stepInterval, variableLabel } from '$lib/composition-list';
+	import {
+		overlayLevelOptions,
+		parseInterval,
+		stepInterval,
+		variableLabel
+	} from '$lib/composition-list';
 
 	import OverlayVariablePicker from './overlay-variable-picker.svelte';
 
@@ -38,6 +43,17 @@
 
 	const toggle = (index: number, source: ChartSource, key: 'raster' | 'contours' | 'arrows') =>
 		updateOverlay(index, { [key]: !source[key] });
+
+	// Changement de niveau : `updateOverlay` refuse un niveau déjà superposé ; le
+	// store ne bouge pas alors, il faut remettre le `<select>` sur la valeur réelle.
+	// Le sélecteur affiche le niveau : le nom de la superposition s'en passe
+	// (« Hauteur géopotentielle (500 hPa) » → « Hauteur géopotentielle »).
+	const baseLabel = (name: string): string => variableLabel(name).replace(/\s*\([^)]*\)$/, '');
+
+	const changeLevel = (index: number, select: HTMLSelectElement) => {
+		updateOverlay(index, { variable: select.value });
+		select.value = $overlays[index]?.variable ?? select.value;
+	};
 
 	const submitSave = () => {
 		if (!canSave) return;
@@ -55,6 +71,28 @@
 		'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg px-3 text-sm transition-colors md:min-h-9';
 </script>
 
+{#snippet intervalInput(source: ChartSource, i: number)}
+	<input
+		type="number"
+		step="any"
+		min="0.1"
+		inputmode="decimal"
+		placeholder="auto"
+		title="Intervalle des isolignes (vide = paliers de l'échelle)"
+		aria-label="Intervalle des isolignes"
+		value={source.contourInterval ?? ''}
+		onkeydown={(e) => {
+			if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+			e.preventDefault();
+			updateOverlay(i, {
+				contourInterval: stepInterval(source.contourInterval ?? 2, e.key === 'ArrowUp')
+			});
+		}}
+		onchange={(e) => updateOverlay(i, { contourInterval: parseInterval(e.currentTarget.value) })}
+		class="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 h-8 w-12 shrink-0 rounded-md bg-white/[0.06] px-1 text-center text-xs text-white tabular-nums placeholder:text-white/35 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+	/>
+{/snippet}
+
 <div class="flex flex-col gap-2">
 	<div
 		class="overflow-hidden rounded-xl bg-white/[0.04] [&>*+*]:border-t [&>*+*]:border-white/[0.06]"
@@ -70,35 +108,17 @@
 		{#each $overlays as source, i (source.variable)}
 			{@const available = isSourceAvailable(source, $metaJson?.variables)}
 			{@const arrowsSupported = variableHasDirections(source.variable)}
+			{@const levels = overlayLevelOptions(source.variable, $metaJson?.variables)}
 			<div
 				class="flex flex-col gap-1 px-3 py-2 text-sm {available ? '' : 'opacity-40'}"
 				title={available ? undefined : 'Indisponible sur ce modèle'}
 			>
 				<div class="flex items-center gap-2">
 					<span class="min-w-0 flex-1 truncate text-white" title={variableLabel(source.variable)}
-						>{variableLabel(source.variable)}</span
+						>{levels.length ? baseLabel(source.variable) : variableLabel(source.variable)}</span
 					>
-					{#if source.contours}
-						<input
-							type="number"
-							step="any"
-							min="0.1"
-							inputmode="decimal"
-							placeholder="auto"
-							title="Intervalle des isolignes (vide = paliers de l'échelle)"
-							aria-label="Intervalle des isolignes"
-							value={source.contourInterval ?? ''}
-							onkeydown={(e) => {
-								if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
-								e.preventDefault();
-								updateOverlay(i, {
-									contourInterval: stepInterval(source.contourInterval ?? 2, e.key === 'ArrowUp')
-								});
-							}}
-							onchange={(e) =>
-								updateOverlay(i, { contourInterval: parseInterval(e.currentTarget.value) })}
-							class="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 h-8 w-12 shrink-0 rounded-md bg-white/[0.06] px-1 text-center text-xs text-white tabular-nums placeholder:text-white/35 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-						/>
+					{#if !levels.length && source.contours}
+						{@render intervalInput(source, i)}
 					{/if}
 					<button
 						type="button"
@@ -110,6 +130,29 @@
 						<XIcon class="size-3.5" aria-hidden="true" />
 					</button>
 				</div>
+				{#if levels.length}
+					<div class="flex items-center gap-2">
+						<select
+							value={source.variable}
+							onchange={(e) => changeLevel(i, e.currentTarget)}
+							title="Niveau"
+							aria-label="Niveau de {variableLabel(source.variable)}"
+							class="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 h-8 shrink-0 cursor-pointer rounded-md bg-white/[0.06] px-1 text-xs text-white tabular-nums"
+						>
+							{#each levels as level (level.value)}
+								<option
+									value={level.value}
+									disabled={level.value !== source.variable &&
+										$overlays.some((other) => other.variable === level.value)}
+									class="bg-slate-900">{level.label}</option
+								>
+							{/each}
+						</select>
+						{#if source.contours}
+							{@render intervalInput(source, i)}
+						{/if}
+					</div>
+				{/if}
 				<div class="flex flex-wrap items-center gap-1">
 					<button
 						type="button"

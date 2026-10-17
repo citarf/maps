@@ -216,6 +216,28 @@ export class OverlayStack {
 			.map((entry) => entry.manager);
 	}
 
+	/**
+	 * Une URL affichée par superposition, dans l'ordre de la liste (lue par
+	 * l'infobulle). L'aplat est préféré au vecteur : les deux portent la même
+	 * variable, seule compte une frame décodée et affichée.
+	 */
+	activeSources(): { variable: string; url: string }[] {
+		const byIndex = new Map<number, { variable: string; url: string; raster: boolean }>();
+		for (const entry of this.entries.values()) {
+			const url = entry.manager.getActiveSourceUrl();
+			if (!url) continue;
+			const index = Number.parseInt(entry.plan.key, 10);
+			const raster = entry.plan.kind === 'raster';
+			const known = byIndex.get(index);
+			if (!known || (raster && !known.raster)) {
+				byIndex.set(index, { variable: entry.plan.source.variable, url, raster });
+			}
+		}
+		return [...byIndex.entries()]
+			.sort(([a], [b]) => a - b)
+			.map(([, { variable, url }]) => ({ variable, url }));
+	}
+
 	/** `true` si `mgr` est un manager de cette pile. */
 	owns(mgr: SlotManager): boolean {
 		for (const entry of this.entries.values()) if (entry.manager === mgr) return true;

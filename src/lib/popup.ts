@@ -11,18 +11,35 @@ import {
 import * as maplibregl from 'maplibre-gl';
 import { mode } from 'mode-watcher';
 
+import { basemapTheme } from '$lib/stores/basemap-theme';
 import { map as m, popup as p, popupMode } from '$lib/stores/map';
 import { omProtocolSettings } from '$lib/stores/om-protocol-settings';
 import { pointWorkspace } from '$lib/stores/point-workspace';
 import { sounding, soundingButtonEnabled } from '$lib/stores/sounding';
 import { convertValue, getDisplayUnit, unitPreferences } from '$lib/stores/units';
 import { selectedDomain, variable as v } from '$lib/stores/variables';
+import { arrowStyle } from '$lib/stores/vector-styles';
 
 import { isSoundingDomain } from '$lib/constants';
 import { hasMeteogram } from '$lib/meteogram/model-map';
+import {
+	ARROW_LENGTH_ANCHORS,
+	ARROW_OPACITY_RANGE,
+	ARROW_PX,
+	ARROW_UNITS,
+	ARROW_WIDTH_RANGE,
+	HEAD_DEPTH,
+	HEAD_HALF,
+	arrowStyleAnchors,
+	isPressureOrHeight,
+	rampAt,
+	rescaledRamp,
+	shortLabel,
+	unwrapAngle
+} from '$lib/popup-format';
 
 import { textWhite } from './helpers';
-import { arrowManager, rasterManager } from './layers';
+import { arrowManager, getOverlayValueSources, rasterManager } from './layers';
 import { terraDrawActive } from './stores/clipping';
 import { desktop, opacity } from './stores/preferences';
 import { resolveWindArrowLevel } from './url';
@@ -35,6 +52,11 @@ let valueSpan: HTMLSpanElement | undefined;
 let unitSpan: HTMLSpanElement | undefined;
 let elevationSpan: HTMLSpanElement | undefined;
 let windSpan: HTMLSpanElement | undefined;
+let stemDiv: HTMLDivElement | undefined;
+let extrasDiv: HTMLDivElement | undefined;
+let arrowSpan: HTMLSpanElement | undefined;
+let arrowSvg: SVGSVGElement | undefined;
+let arrowPath: SVGPathElement | undefined;
 let soundingBtn: HTMLButtonElement | undefined;
 let meteogramBtn: HTMLButtonElement | undefined;
 let lastCoords: maplibregl.LngLat | undefined;
@@ -45,11 +67,233 @@ const WIND_VARIABLE_REGEX = /_(?:u|v)_component_/;
 let cachedClippingOptionsRef: unknown = undefined;
 let cachedClippingTester: ((lon: number, lat: number) => boolean) | undefined;
 
+// =============================================================================
+// Flèche de direction (portage d'open-meteo/maps #373)
+// =============================================================================
+
+interface ArrowPose {
+	/** Degrés continus (non repliés), cf. `arrowAngle`. */
+	angle: number;
+	length: number;
+	opacity: number;
+	width: number;
+}
+
+// Angle continu : interpoler vers la valeur brute ferait le grand tour à 0/360.
+let arrowAngle = 0;
+let arrowPose: ArrowPose | undefined;
+let arrowTarget: ArrowPose | undefined;
+let arrowFrame = 0;
+/** Dernier échantillon, pour réorienter la flèche quand seule la vue change. */
+let arrowDirection: number | undefined;
+let arrowSpeed = 0;
+/** Part de la distance restante parcourue à chaque frame. */
+const ARROW_EASE = 0.25;
+
+/**
+ * Redessine la flèche en un seul tracé, rotation comprise dans les coordonnées :
+ * une transformation CSS se pixelisait (le navigateur réutilise un bitmap
+ * rastérisé une fois) ; recalculer la géométrie ne coûte rien à cette taille.
+ */
+const drawArrow = (pose: ArrowPose): void => {
+	if (!arrowSvg || !arrowPath) return;
+	const centre = ARROW_UNITS / 2;
+	const radians = (pose.angle * Math.PI) / 180;
+	const sin = Math.sin(radians);
+	const cos = Math.cos(radians);
+	// Rotation horaire autour du centre, comme `rotatePoint` des flèches de la carte
+	const at = (x: number, y: number): string =>
+		`${(centre + x * cos - y * sin).toFixed(2)} ${(centre + x * sin + y * cos).toFixed(2)}`;
+	const half = pose.length / 2;
+	const barb = HEAD_DEPTH - half;
+	arrowPath.setAttribute(
+		'd',
+		`M${at(0, half)}L${at(0, -half)}M${at(-HEAD_HALF, barb)}L${at(0, -half)}L${at(HEAD_HALF, barb)}`
+	);
+	arrowSvg.style.opacity = String(pose.opacity);
+	// Épaisseurs en px ; le viewBox fait ARROW_PX de large à l'écran
+	arrowSvg.style.strokeWidth = String(pose.width * (ARROW_UNITS / ARROW_PX));
+};
+
+/** Rapproche la pose dessinée du dernier échantillon jusqu'à l'atteindre. */
+const stepArrow = (): void => {
+	arrowFrame = 0;
+	if (!arrowPose || !arrowTarget) return;
+	const from = arrowPose;
+	const to = arrowTarget;
+	const next: ArrowPose = {
+		angle: from.angle + (to.angle - from.angle) * ARROW_EASE,
+		length: from.length + (to.length - from.length) * ARROW_EASE,
+		opacity: from.opacity + (to.opacity - from.opacity) * ARROW_EASE,
+		width: from.width + (to.width - from.width) * ARROW_EASE
+	};
+	// Sous un dixième de degré / un centième d'unité, plus rien n'est visible
+	const settled =
+		Math.abs(to.angle - next.angle) < 0.1 &&
+		Math.abs(to.length - next.length) < 0.01 &&
+		Math.abs(to.opacity - next.opacity) < 0.005 &&
+		Math.abs(to.width - next.width) < 0.01;
+	arrowPose = settled ? { ...to } : next;
+	drawArrow(arrowPose);
+	if (!settled) arrowFrame = requestAnimationFrame(stepArrow);
+};
+
+/**
+ * Angle à l'écran (degrés, sens horaire depuis le haut) d'un cap `heading` en
+ * `lngLat`. La bulle reste alignée sur l'écran pour que le texte soit droit :
+ * orientation, inclinaison et perspective sont donc appliquées ici, en
+ * projetant un petit pas le long du cap.
+ */
+const screenAngle = (map: maplibregl.Map, lngLat: maplibregl.LngLat, heading: number): number => {
+	const from = maplibregl.MercatorCoordinate.fromLngLat(lngLat);
+	const radians = (heading * Math.PI) / 180;
+	// Environ un pixel écran au zoom courant ; y Mercator croît vers le sud
+	const step = 2 ** -(map.getZoom() + 9);
+	const to = new maplibregl.MercatorCoordinate(
+		from.x + Math.sin(radians) * step,
+		from.y - Math.cos(radians) * step,
+		0
+	);
+	const a = map.project(lngLat);
+	const b = map.project(to.toLngLat());
+	return (Math.atan2(b.x - a.x, a.y - b.y) * 180) / Math.PI;
+};
+
+/**
+ * Oriente la flèche dans le sens de l'écoulement et la dimensionne selon
+ * `speed` (valeur brute, dans l'unité des seuils des flèches de la carte).
+ * `direction` est la direction météo d'où vient l'écoulement (les flèches de la
+ * carte tournent de direction + 180). `undefined`/NaN masque la flèche.
+ */
+const setArrow = (direction: number | undefined, speed: number): void => {
+	if (!arrowSpan || !arrowSvg || !arrowPath) return;
+	arrowDirection = direction;
+	arrowSpeed = speed;
+	if (direction === undefined || !isFinite(direction)) {
+		if (arrowFrame) cancelAnimationFrame(arrowFrame);
+		arrowFrame = 0;
+		// Oubliée : le prochain échantillon repart de lui, pas d'une pose périmée
+		arrowPose = undefined;
+		arrowSpan.classList.remove('popup-arrow-visible');
+		return;
+	}
+
+	const map = get(m);
+	const lngLat = get(p)?.getLngLat();
+	const target = map && lngLat ? screenAngle(map, lngLat, direction + 180) : direction + 180;
+	arrowAngle = unwrapAngle(arrowAngle, target);
+
+	const style = arrowStyleAnchors(get(arrowStyle), get(basemapTheme) === 'dark');
+	arrowTarget = {
+		angle: arrowAngle,
+		length: rampAt(ARROW_LENGTH_ANCHORS, speed, 1) * ARROW_UNITS,
+		opacity: rescaledRamp(style, speed, 1, ARROW_OPACITY_RANGE),
+		width: rescaledRamp(style, speed, 2, ARROW_WIDTH_RANGE)
+	};
+
+	if (!arrowPose) {
+		// Premier échantillon depuis le masquage : on s'y pose sans interpoler
+		arrowPose = { ...arrowTarget };
+		drawArrow(arrowPose);
+		arrowSpan.classList.add('popup-arrow-visible');
+		return;
+	}
+	if (!arrowFrame) arrowFrame = requestAnimationFrame(stepArrow);
+};
+
+/** Réoriente la flèche sur le dernier échantillon après un changement de vue. */
+const realignArrow = (): void => {
+	if (get(p)) setArrow(arrowDirection, arrowSpeed);
+};
+
+/** Place la flèche devant la valeur qu'elle décrit (valeur principale ou vent). */
+const placeArrowBefore = (target: HTMLElement | undefined): void => {
+	if (arrowSpan && target && arrowSpan.nextSibling !== target) {
+		target.parentElement?.insertBefore(arrowSpan, target);
+	}
+};
+
+// =============================================================================
+// Lignes des superpositions (portage d'open-meteo/maps #361)
+// =============================================================================
+
+const STEM_BASE_HEIGHT = 24;
+
+// Jeton croissant : seule la dernière mise à jour écrit dans le DOM, pour qu'une
+// lecture lente d'une position antérieure n'écrase pas les valeurs plus récentes.
+let popupUpdateSeq = 0;
+
+/** Remonte la bulle et allonge la tige de la hauteur des lignes ajoutées. */
+const adjustStemForExtras = (): void => {
+	if (!wrapperDiv || !stemDiv || !extrasDiv) return;
+	const extraHeight = extrasDiv.offsetHeight;
+	wrapperDiv.style.transform = extraHeight ? `translateY(-${extraHeight}px)` : '';
+	stemDiv.style.height = `${STEM_BASE_HEIGHT + extraHeight}px`;
+};
+
+/**
+ * Valeur de chaque superposition au point (hors variable du fond, déjà dans la
+ * pastille), une ligne « libellé valeur unité » chacune.
+ */
+const updateExtraSources = async (
+	coordinates: maplibregl.LngLat,
+	primaryVariable: string,
+	seq: number
+): Promise<void> => {
+	if (!extrasDiv) return;
+	const extras = getOverlayValueSources().filter(({ variable }) => variable !== primaryVariable);
+	if (!extras.length) {
+		extrasDiv.replaceChildren();
+		adjustStemForExtras();
+		return;
+	}
+
+	const colorScales = get(omProtocolSettings).colorScales;
+	const units = get(unitPreferences);
+	const isDark = mode.current === 'dark';
+	const lines = await Promise.all(
+		extras.map(async ({ variable, url }) => {
+			try {
+				const { value } = await getValueFromLatLong(coordinates.lat, coordinates.lng, url);
+				const colorScale = getColorScale(variable, isDark, colorScales);
+				const label = shortLabel(variable);
+				if (!isFinite(value)) return { text: `${label} : –`, small: false, muted: true };
+				const displayValue = convertValue(value, colorScale.unit, units, variable);
+				const unit = getDisplayUnit(colorScale.unit, units, variable);
+				return {
+					text: `${label} : ${displayValue.toFixed(1)} ${unit}`,
+					small: isPressureOrHeight(variable),
+					// Une valeur qui s'affiche à zéro est du contexte, pas du signal
+					muted: Math.round(Math.abs(displayValue) * 10) === 0
+				};
+			} catch {
+				// Frame pas encore décodée (cf. « State not found ») : ligne omise
+				return undefined;
+			}
+		})
+	);
+
+	if (seq !== popupUpdateSeq) return;
+	extrasDiv.replaceChildren(
+		...lines
+			.filter((line) => line !== undefined)
+			.map((line) => {
+				const lineDiv = document.createElement('div');
+				lineDiv.classList.add('popup-extra-line');
+				if (line.small) lineDiv.classList.add('popup-extra-line-sm');
+				if (line.muted) lineDiv.classList.add('popup-extra-line-muted');
+				lineDiv.innerText = line.text;
+				return lineDiv;
+			})
+	);
+	adjustStemForExtras();
+};
+
 const initPopupDiv = (): void => {
 	el = document.createElement('div');
 	el.classList.add('popup');
 
-	const stemDiv = document.createElement('div');
+	stemDiv = document.createElement('div');
 	stemDiv.classList.add('popup-stem');
 	const dotDiv = document.createElement('div');
 	dotDiv.classList.add('popup-dot');
@@ -62,6 +306,18 @@ const initPopupDiv = (): void => {
 	contentDiv = document.createElement('div');
 	contentDiv.classList.add('popup-content');
 
+	// Flèche de direction (portage d'open-meteo/maps #373) : pointe là où va
+	// l'écoulement, comme les flèches de la carte ; masquée sans direction.
+	// `drawArrow` réécrit toute la forme dans le tracé à chaque frame.
+	arrowSpan = document.createElement('span');
+	arrowSpan.classList.add('popup-arrow');
+	arrowSpan.innerHTML =
+		`<svg viewBox="0 0 ${ARROW_UNITS} ${ARROW_UNITS}" fill="none" stroke="currentColor" ` +
+		'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+		'<path class="popup-arrow-path" /></svg>';
+	arrowSvg = arrowSpan.querySelector('svg') ?? undefined;
+	arrowPath = arrowSpan.querySelector<SVGPathElement>('.popup-arrow-path') ?? undefined;
+
 	valueSpan = document.createElement('span');
 	valueSpan.classList.add('popup-value');
 	unitSpan = document.createElement('span');
@@ -71,12 +327,18 @@ const initPopupDiv = (): void => {
 	elevationSpan = document.createElement('span');
 	elevationSpan.classList.add('popup-elevation');
 
+	contentDiv.append(arrowSpan);
 	contentDiv.append(valueSpan);
 	contentDiv.append(unitSpan);
 	contentDiv.append(windSpan);
 	contentDiv.append(elevationSpan);
 
 	wrapperDiv.append(contentDiv);
+
+	// Une ligne par superposition de la composition (valeur au point).
+	extrasDiv = document.createElement('div');
+	extrasDiv.classList.add('popup-extras');
+	wrapperDiv.append(extrasDiv);
 
 	soundingBtn = document.createElement('button');
 	soundingBtn.className = 'popup-sounding-btn';
@@ -134,6 +396,7 @@ const updatePopupContent = async (coordinates: maplibregl.LngLat): Promise<void>
 
 	const activeUrl = rasterManager?.getActiveSourceUrl();
 	if (!activeUrl) return;
+	const seq = ++popupUpdateSeq;
 
 	// L'arrowManager dessine dès qu'un niveau de vent est résolu (overlay explicite OU
 	// fallback « selon la variable affichée » sur variable non-vent). On lit alors le
@@ -146,8 +409,11 @@ const updatePopupContent = async (coordinates: maplibregl.LngLat): Promise<void>
 		getValueFromLatLong(coordinates.lat, coordinates.lng, activeUrl).catch(() => undefined),
 		windUrl
 			? getValueFromLatLong(coordinates.lat, coordinates.lng, windUrl).catch(() => undefined)
-			: Promise.resolve(undefined)
+			: Promise.resolve(undefined),
+		// Valeurs et ligne de chaque superposition, en parallèle de la valeur principale
+		updateExtraSources(coordinates, get(v), seq)
 	]);
+	if (seq !== popupUpdateSeq) return;
 
 	// L'état décodé de la frame courante peut être absent du cache du protocole `om://`
 	// (capacité ~2 états : un décode anticipé de voisins ou un chargement encore en vol
@@ -169,6 +435,7 @@ const updatePopupContent = async (coordinates: maplibregl.LngLat): Promise<void>
 			if (cachedClippingTester && !cachedClippingTester(coordinates.lng, coordinates.lat)) {
 				contentDiv.style.backgroundColor = '';
 				contentDiv.style.color = '';
+				setArrow(undefined, 0);
 				valueSpan.innerText = 'Hors zone';
 				unitSpan.innerText = '';
 				windSpan.innerText = '';
@@ -191,17 +458,34 @@ const updatePopupContent = async (coordinates: maplibregl.LngLat): Promise<void>
 		const displayValue = convertValue(value, colorScale.unit, units, variable);
 		valueSpan.innerText = displayValue.toFixed(1);
 		unitSpan.innerText = getDisplayUnit(colorScale.unit, units, variable);
-		if (windResult && isFinite(windResult.value)) {
+		// Flèche devant la valeur qu'elle décrit : la variable affichée si elle
+		// porte une direction (vent, vagues…), sinon le vent du calque de flèches.
+		const windShown = !!windResult && isFinite(windResult.value);
+		const arrowOnWind =
+			!isFinite(valueResult.direction ?? NaN) && windShown && isFinite(windResult.direction ?? NaN);
+		if (windShown) {
 			const windDisplay = convertValue(windResult.value, 'm/s', units);
-			windSpan.innerText = `· ${windDisplay.toFixed(1)} ${getDisplayUnit('m/s', units)}`;
+			// La flèche sert de séparateur quand elle précède le vent
+			const separator = arrowOnWind ? '' : '· ';
+			windSpan.innerText = `${separator}${windDisplay.toFixed(1)} ${getDisplayUnit('m/s', units)}`;
 		} else {
 			windSpan.innerText = '';
+		}
+		if (isFinite(valueResult.direction ?? NaN)) {
+			placeArrowBefore(valueSpan);
+			setArrow(valueResult.direction, value);
+		} else if (arrowOnWind) {
+			placeArrowBefore(windSpan);
+			setArrow(windResult.direction, windResult.value);
+		} else {
+			setArrow(undefined, 0);
 		}
 		elevationSpan.innerText = hasElevation ? `${Math.round(elevation)}m` : '';
 		elevationSpan.style.color = textWhite(color, isDark) ? 'white' : 'black';
 	} else {
 		contentDiv.style.backgroundColor = '';
 		contentDiv.style.color = '';
+		setArrow(undefined, 0);
 
 		const domainBounds = GridFactory.create(get(selectedDomain).grid).getBounds();
 		const [minLon, minLat, maxLon, maxLat] = domainBounds;
@@ -289,6 +573,9 @@ export const addPopup = (): void => {
 	if (!map) return;
 
 	map.on('mousemove', updatePopup);
+	// Orientation, inclinaison et, sous inclinaison, la position de la bulle
+	// changent la direction apparente : `move` les couvre toutes.
+	map.on('move', realignArrow);
 
 	map.on('click', async (e: maplibregl.MapLayerMouseEvent) => {
 		if (!map || get(terraDrawActive)) return;

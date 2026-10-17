@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { PRESET_GROUP_ORDER, chartPresets } from '$lib/chart-presets';
 import {
 	groupPresets,
+	overlayLevelOptions,
 	parseInterval,
 	savedCompositionEntries,
 	stepInterval,
@@ -110,5 +111,45 @@ describe('variableLabel', () => {
 	it('traduit le libellé de la variable', () => {
 		expect(variableLabel('temperature_2m')).not.toBe('temperature_2m');
 		expect(variableLabel('variable_inconnue')).toBe('variable_inconnue');
+	});
+});
+
+describe('overlayLevelOptions', () => {
+	const meta = [
+		'temperature_2m',
+		'temperature_850hPa',
+		'temperature_500hPa',
+		'wind_u_component_10m',
+		'wind_v_component_10m',
+		'wind_u_component_850hPa',
+		'wind_v_component_850hPa',
+		'pressure_msl'
+	];
+
+	it('propose les niveaux du même groupe, libellés « niveau unité »', () => {
+		const options = overlayLevelOptions('temperature_850hPa', meta);
+		expect(options.map((o) => o.value)).toEqual(
+			expect.arrayContaining(['temperature_2m', 'temperature_850hPa', 'temperature_500hPa'])
+		);
+		expect(options).toHaveLength(3);
+		expect(options.find((o) => o.value === 'temperature_850hPa')?.label).toBe('850 hPa');
+		expect(options.find((o) => o.value === 'temperature_2m')?.label).toBe('2 m');
+	});
+
+	it('exclut les composantes v du vent', () => {
+		expect(overlayLevelOptions('wind_u_component_850hPa', meta).map((o) => o.value)).toEqual(
+			expect.arrayContaining(['wind_u_component_10m', 'wind_u_component_850hPa'])
+		);
+		expect(
+			overlayLevelOptions('wind_u_component_850hPa', meta).some((o) =>
+				o.value.includes('v_component')
+			)
+		).toBe(false);
+	});
+
+	it('aucun choix pour une variable sans niveaux, un niveau unique ou un meta absent', () => {
+		expect(overlayLevelOptions('pressure_msl', meta)).toEqual([]);
+		expect(overlayLevelOptions('temperature_850hPa', ['temperature_850hPa'])).toEqual([]);
+		expect(overlayLevelOptions('temperature_850hPa', undefined)).toEqual([]);
 	});
 });

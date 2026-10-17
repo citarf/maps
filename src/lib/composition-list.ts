@@ -3,11 +3,12 @@
  * toutes faites, disponibilité selon le modèle, pas de l'intervalle des
  * isolignes. Portage de `chart-list.svelte` / `chart-editor.svelte` d'upstream.
  */
-import { variableOptions } from '@openmeteo/weather-map-layer';
+import { LEVEL_UNIT_REGEX, variableOptions } from '@openmeteo/weather-map-layer';
 
 import { PRESET_GROUP_ORDER } from '$lib/chart-presets';
 import { isSourceAvailable } from '$lib/composition';
 import { translateVariableLabel } from '$lib/i18n/variables-fr';
+import { buildLevelGroups } from '$lib/layer-list';
 
 import type { ChartPreset } from '$lib/chart-types';
 import type { SavedComposition } from '$lib/composition';
@@ -92,4 +93,28 @@ export const stepInterval = (current: number, up: boolean): number => {
 export const parseInterval = (raw: string): number | undefined => {
 	const parsed = Number(raw);
 	return raw.trim() === '' || !isFinite(parsed) || parsed <= 0 ? undefined : Math.max(0.1, parsed);
+};
+
+/**
+ * Niveaux proposés pour changer celui d'une superposition (portage de
+ * `source-level-select.svelte` d'upstream) : les variables du même groupe de
+ * niveaux que `variable` dans le modèle courant, libellées « 850 hPa », « 2 m ».
+ * Les composantes `v` et les directions du vent sont exclues, comme dans
+ * « Calques ». Liste vide s'il n'y a pas d'autre niveau à proposer.
+ */
+export const overlayLevelOptions = (
+	variable: string,
+	metaVariables: readonly string[] | undefined
+): { value: string; label: string }[] => {
+	if (!metaVariables) return [];
+	const group = Object.values(buildLevelGroups([...metaVariables])).find((options) =>
+		options.some(({ value }) => value === variable)
+	);
+	const options = (group ?? [])
+		.filter(({ value }) => !value.includes('v_component') && !value.includes('_direction'))
+		.map(({ value }) => {
+			const level = value.match(LEVEL_UNIT_REGEX)?.groups;
+			return { value, label: level ? `${level.level} ${level.unit}` : value };
+		});
+	return options.length > 1 ? options : [];
 };

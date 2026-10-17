@@ -455,6 +455,10 @@ const resolveVectorBeforeLayer = (map: maplibregl.Map, clipWater: boolean): stri
 // chaque `addOmFileLayers` (un rechargement de style efface sources et couches).
 let overlayStack: OverlayStack | undefined;
 
+/** URL affichée de chaque superposition, dans l'ordre de la liste (infobulle). */
+export const getOverlayValueSources = (): { variable: string; url: string }[] =>
+	overlayStack?.activeSources() ?? [];
+
 /**
  * Ancre des aplats de superposition : couche invisible posée sous toutes les
  * couches vecteur (et sous les départements), au-dessus de l'aplat principal.
