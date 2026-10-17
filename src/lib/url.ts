@@ -53,6 +53,8 @@ import { omProtocolSettings } from './stores/om-protocol-settings';
 import { parseISOWithoutTimezone } from './time-format';
 import { deriveDisplayedWindLevel, isWindVariable } from './vector-styles';
 
+import type { ChartSource } from '$lib/chart-types';
+
 export const updateUrl = async (
 	urlParam?: string,
 	newValue?: string,
@@ -304,8 +306,15 @@ const colorHashSuffix = (): string => {
 
 /** Surcharge ponctuelle des flags vecteur d'une URL (par défaut : lus depuis le
  *  store `vectorOptions`). Sert à bâtir une source ciblée — p. ex. l'overlay vent
- *  qui ne veut QUE les flèches, sans les contours/grille de la variable. */
-type VectorFlagOverride = { grid?: boolean; arrows?: boolean; contours?: boolean };
+ *  qui ne veut QUE les flèches, sans les contours/grille de la variable.
+ *  `intervals` : pas des isolignes, ou `'breakpoints'` pour suivre les paliers de
+ *  l'échelle de couleurs (aucun `&intervals=`). */
+type VectorFlagOverride = {
+	grid?: boolean;
+	arrows?: boolean;
+	contours?: boolean;
+	intervals?: number | 'breakpoints';
+};
 
 export const getOMUrlFor = (
 	variable: string,
@@ -352,8 +361,10 @@ export const getOMUrlFor = (
 	if (grid) result += '&grid=true';
 	if (arrows) result += '&arrows=true';
 	if (contours) result += '&contours=true';
-	if (contours && !vectorOptions.breakpoints)
-		result += `&intervals=${vectorOptions.contourInterval}`;
+	const intervals =
+		vectorOverride?.intervals ??
+		(vectorOptions.breakpoints ? 'breakpoints' : vectorOptions.contourInterval);
+	if (contours && intervals !== 'breakpoints') result += `&intervals=${intervals}`;
 
 	const tileSize = get(tS);
 	if (tileSize !== 256) result += `&tile_size=${tileSize}`;
@@ -404,4 +415,24 @@ export const getWindOverlayUrl = (): string | undefined => {
 	const level = resolveWindArrowLevel();
 	if (!level) return undefined;
 	return getOMUrlFor(`wind_u_component_${level}`, undefined, { contours: false, grid: false });
+};
+
+/**
+ * URL om:// d'une superposition de composition : variable de la source, sans
+ * grille (les points/valeurs de grille suivent le fond), avec ses propres
+ * isolignes/flèches. Isolignes à pas fixe si `contourInterval` est défini,
+ * sinon sur les paliers de l'échelle de couleurs. `undefined` sur le domaine
+ * anomalie (un seul fichier, pas de superposition possible).
+ */
+export const getOverlayOmUrl = (
+	source: ChartSource,
+	flags: { contours: boolean; arrows: boolean }
+): string | undefined => {
+	if (get(d) === ANOMALY_DOMAIN) return undefined;
+	return getOMUrlFor(source.variable, undefined, {
+		grid: false,
+		arrows: flags.arrows,
+		contours: flags.contours,
+		intervals: source.contourInterval ?? 'breakpoints'
+	});
 };

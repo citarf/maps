@@ -19,6 +19,7 @@
 	import { version } from '$app/environment';
 
 	import { basemapTheme } from '$lib/stores/basemap-theme';
+	import { overlays } from '$lib/stores/composition';
 	import { showDepartments } from '$lib/stores/departments';
 	import { showLabels } from '$lib/stores/labels';
 	import { map } from '$lib/stores/map';
@@ -248,6 +249,14 @@
 		const _deps = [$windOverlayEnabled, $windOverlayLevel];
 		// Invalidate cached URL so changeOMfileURL recomputes
 		currentOmUrl.set('');
+		changeOMfileURL();
+	});
+
+	// Superpositions de composition : recharge quand la liste change (chargement
+	// depuis l'URL, store persisté). Les actions de composition-actions.ts appellent
+	// déjà changeOMfileURL() ; ce second appel ne recharge rien (plan inchangé).
+	$effect(() => {
+		const _deps = $overlays;
 		changeOMfileURL();
 	});
 
