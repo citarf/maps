@@ -230,3 +230,28 @@ describe('ensureAnchorLayer', () => {
 		expect(calls[0][1]).toBeUndefined();
 	});
 });
+
+describe('OverlayStack.owns', () => {
+	it('reconnaît ses managers, plus après leur retrait', () => {
+		const stack = new OverlayStack(
+			{
+				style: { getSource: () => undefined },
+				getLayer: () => undefined
+			} as unknown as maplibregl.Map,
+			{
+				onReady: () => {},
+				onError: () => {},
+				onDestroy: () => {},
+				rasterBefore: () => 'r',
+				vectorBefore: () => 'v',
+				layers: () => []
+			}
+		);
+		const [{ manager }] = stack.sync(
+			desiredOverlayLayers([{ variable: 'cloud_cover_low', raster: true }], ctx, urlFor)
+		);
+		expect(stack.owns(manager)).toBe(true);
+		stack.sync([]);
+		expect(stack.owns(manager)).toBe(false);
+	});
+});

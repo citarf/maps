@@ -203,6 +203,12 @@ export class OverlayStack {
 			.map((entry) => entry.manager);
 	}
 
+	/** `true` si `mgr` est un manager de cette pile. */
+	owns(mgr: SlotManager): boolean {
+		for (const entry of this.entries.values()) if (entry.manager === mgr) return true;
+		return false;
+	}
+
 	destroyAll(): void {
 		const entries = [...this.entries.values()];
 		this.entries.clear();

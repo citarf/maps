@@ -78,3 +78,44 @@ describe('CommitGroup', () => {
 		expect(overlay.commitNow).toHaveBeenCalledOnce();
 	});
 });
+
+describe('CommitGroup.begin avec report', () => {
+	it('conserve un membre en vol accepté par `keep` (superposition pas encore prête)', () => {
+		const { group } = makeGroup();
+		const overlay = fake();
+		const raster = fake();
+		group.begin([overlay]);
+		// Nouveau chargement primaire avant que la superposition ne soit prête.
+		group.begin([raster], (mgr) => mgr === overlay);
+		raster.ready = true;
+		group.tryFlush();
+		expect(raster.commitNow).not.toHaveBeenCalled();
+		overlay.ready = true;
+		group.tryFlush();
+		expect(overlay.commitNow).toHaveBeenCalledOnce();
+		expect(raster.commitNow).toHaveBeenCalledOnce();
+	});
+
+	it('sans report (aucune superposition), le groupe en vol est remplacé comme avant', () => {
+		const { group, hooks } = makeGroup();
+		const oldRaster = fake();
+		const raster = fake(true);
+		group.begin([oldRaster]);
+		group.begin([raster], () => false);
+		group.tryFlush();
+		expect(raster.commitNow).toHaveBeenCalledOnce();
+		expect(oldRaster.commitNow).not.toHaveBeenCalled();
+		expect(hooks.onSettled).toHaveBeenCalledOnce();
+		group.begin([], () => false);
+		expect(hooks.onSettled).toHaveBeenCalledTimes(2);
+	});
+
+	it('un membre rechargé et en vol n’est pas dupliqué', () => {
+		const { group } = makeGroup();
+		const overlay = fake(true);
+		group.begin([overlay]);
+		group.begin([overlay], () => true);
+		group.tryFlush();
+		expect(overlay.commitNow).toHaveBeenCalledOnce();
+	});
+});

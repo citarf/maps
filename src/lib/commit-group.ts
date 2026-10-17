@@ -28,9 +28,17 @@ export class CommitGroup<T extends Committable = Committable> {
 		this.hooks = hooks;
 	}
 
-	/** Démarre un nouveau groupe : appeler AVANT les `update()` correspondants. */
-	begin(managers: T[]): void {
-		this.members = managers.length > 0 ? new Set(managers) : null;
+	/**
+	 * Démarre un nouveau groupe : appeler AVANT les `update()` correspondants.
+	 * `keep` reporte dans le nouveau groupe les membres du groupe en vol qu'il
+	 * accepte (p. ex. une superposition encore en chargement, non rechargée par
+	 * cet appel) : sans ça, leur commit différé ne serait jamais exécuté. Sans
+	 * `keep`, le groupe en vol est remplacé (comportement historique).
+	 */
+	begin(managers: T[], keep?: (mgr: T) => boolean): void {
+		const carried = keep && this.members ? [...this.members].filter(keep) : [];
+		const next = [...managers, ...carried];
+		this.members = next.length > 0 ? new Set(next) : null;
 		if (!this.members) this.hooks.onSettled();
 	}
 
@@ -69,10 +77,6 @@ export class CommitGroup<T extends Committable = Committable> {
 	forget(mgr: T): void {
 		if (!this.members?.has(mgr)) return;
 		this.removeMember(mgr);
-	}
-
-	has(mgr: T): boolean {
-		return this.members?.has(mgr) ?? false;
 	}
 
 	private removeMember(mgr: T): void {

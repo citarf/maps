@@ -394,7 +394,8 @@ const commitGroup = new CommitGroup<SlotManager>({
 });
 
 /** Démarre un nouveau groupe : appeler AVANT les `update()` correspondants. */
-const beginCommitGroup = (managers: SlotManager[]): void => commitGroup.begin(managers);
+const beginCommitGroup = (managers: SlotManager[], keep?: (mgr: SlotManager) => boolean): void =>
+	commitGroup.begin(managers, keep);
 
 /** Appelé par chaque manager (onReady) : committe tout le groupe quand tous sont prêts. */
 const tryFlushGroup = (): void => commitGroup.tryFlush();
@@ -731,7 +732,10 @@ export const changeOMfileURL = (vectorOnly = false, rasterOnly = false): void =>
 
 	loading.set(true);
 	if (primaryCount > 0) {
-		beginCommitGroup(group);
+		// Les superpositions encore en vol mais non rechargées ici (URL inchangée)
+		// sont reportées dans le nouveau groupe : sinon leur commit différé serait
+		// perdu et elles resteraient invisibles. Sans superposition : aucun report.
+		beginCommitGroup(group, (mgr) => overlayStack?.owns(mgr) ?? false);
 	} else {
 		// Seules des superpositions changent : on les fusionne dans le groupe en vol
 		// (comme reloadVectorStyle) au lieu de l'écraser, sinon un chargement
