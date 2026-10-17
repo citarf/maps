@@ -413,6 +413,71 @@
 	display: none;
 }
 
+/* Flèche de direction (portage d'open-meteo/maps) devant la valeur qu'elle
+   décrit : la variable affichée si elle porte une direction, sinon le vent.
+   Masquée sans direction. */
+.popup-arrow {
+	display: none;
+	flex: none;
+	width: 18px;
+	height: 18px;
+	margin-right: 1px;
+}
+
+.popup-arrow-visible {
+	display: block;
+}
+
+/* Devant le vent, la flèche remplace le séparateur « · ». */
+.popup-arrow-visible + .popup-wind {
+	margin-left: 0;
+}
+
+/* Ni transformation ni transition volontairement : angle, longueur, opacité et
+   épaisseur sont interpolés dans `popup.ts` et réécrits dans le tracé à chaque
+   frame (un élément transformé peut être rastérisé une fois puis réutilisé, ce
+   qui pixelisait la flèche). */
+.popup-arrow svg {
+	display: block;
+	width: 100%;
+	height: 100%;
+	overflow: visible;
+	shape-rendering: geometricPrecision;
+}
+
+/* Une ligne par superposition de la composition, sous la pastille. */
+.popup-extras {
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+	padding: 0 0.3rem;
+}
+
+.popup-extras:not(:empty) {
+	padding-bottom: 0.15rem;
+}
+
+.popup-extra-line {
+	font-size: 0.65rem;
+	line-height: 1.2;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	max-width: 220px;
+	opacity: 0.9;
+	text-align: left;
+}
+
+.popup-extra-line-sm {
+	font-size: 0.55rem;
+	opacity: 0.7;
+}
+
+/* Valeur nulle ou absente : simple contexte */
+.popup-extra-line-muted {
+	opacity: 0.45;
+}
+
 .popup-elevation {
 	top: -18px;
 	position: absolute;
