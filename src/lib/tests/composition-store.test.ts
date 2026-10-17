@@ -18,6 +18,7 @@ import {
 	deleteSavedComposition,
 	removeOverlay,
 	saveCurrentComposition,
+	setBaseVariable,
 	updateOverlay
 } from '$lib/composition-actions';
 import { updateUrl } from '$lib/url';
@@ -57,6 +58,15 @@ describe('actions de composition', () => {
 		expect(get(overlays)).toEqual([{ variable: 'pressure_msl', contours: true }]);
 		removeOverlay(0);
 		expect(get(overlays)).toEqual([]);
+	});
+
+	it('construction pas à pas : changer le fond garde les superpositions', () => {
+		clearOverlays();
+		setBaseVariable('temperature_850hPa');
+		addOverlay('geopotential_height_500hPa');
+		setBaseVariable('pressure_msl');
+		expect(get(variable)).toBe('pressure_msl');
+		expect(get(overlays).map((o) => o.variable)).toEqual(['geopotential_height_500hPa']);
 	});
 
 	it('updateOverlay refuse un doublon de variable', () => {
