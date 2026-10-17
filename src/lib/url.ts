@@ -148,7 +148,12 @@ export const urlParamsToPreferences = () => {
 		url.searchParams.set('variable2', get(variable2));
 	}
 
+	// `overlays` est omis de l'URL quand la liste est vide : un lien explicite
+	// (domaine ou variable fournis, typiquement un lien partagé) sans `overlays`
+	// désigne une carte SANS superposition. Seule une URL nue (retour sur le site)
+	// restaure les superpositions mémorisées localement.
 	const overlaysParam = params.get('overlays');
+	const explicitLink = params.has('domain') || params.has('variable');
 	if (overlaysParam) {
 		const parsed = parseSources(overlaysParam);
 		if (parsed) {
@@ -156,6 +161,9 @@ export const urlParamsToPreferences = () => {
 		} else {
 			toast('Paramètre « overlays » invalide, ignoré.');
 		}
+	} else if (overlaysParam !== null || explicitLink) {
+		overlays.set([]);
+		url.searchParams.delete('overlays');
 	} else if (get(overlays).length > 0) {
 		url.searchParams.set('overlays', serializeSources(get(overlays)));
 	}

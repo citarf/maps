@@ -57,4 +57,31 @@ describe('urlParamsToPreferences — overlays', () => {
 		expect(get(overlays)).toEqual([{ variable: 'pressure_msl', contours: true }]);
 		expect(toast).toHaveBeenCalled();
 	});
+
+	// Lien partagé : l'URL omet `overlays` quand la liste est vide. Sans `overlays`,
+	// un lien explicite (domaine/variable) désigne donc une carte SANS superposition —
+	// les superpositions mémorisées localement ne doivent pas s'y ajouter.
+	it('un lien explicite sans overlays efface les superpositions mémorisées', () => {
+		overlays.set([{ variable: 'pressure_msl', contours: true }]);
+		urlStore.set(new URL('http://localhost/?domain=ecmwf_ifs025&variable=temperature_2m'));
+		urlParamsToPreferences();
+		expect(get(overlays)).toEqual([]);
+		expect(get(urlStore).searchParams.get('overlays')).toBeNull();
+	});
+
+	it('overlays vide efface les superpositions mémorisées', () => {
+		overlays.set([{ variable: 'pressure_msl', contours: true }]);
+		urlStore.set(new URL('http://localhost/?overlays='));
+		urlParamsToPreferences();
+		expect(get(overlays)).toEqual([]);
+		expect(get(urlStore).searchParams.get('overlays')).toBeNull();
+	});
+
+	it("une URL nue restaure les superpositions mémorisées et les écrit dans l'URL", () => {
+		overlays.set([{ variable: 'pressure_msl', contours: true }]);
+		urlStore.set(new URL('http://localhost/'));
+		urlParamsToPreferences();
+		expect(get(overlays)).toEqual([{ variable: 'pressure_msl', contours: true }]);
+		expect(get(urlStore).searchParams.get('overlays')).toBe('pressure_msl:c');
+	});
 });
