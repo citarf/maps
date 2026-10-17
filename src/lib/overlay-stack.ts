@@ -81,8 +81,23 @@ export const desiredOverlayLayers = (
 };
 
 /**
- * Écart entre les couches actives (`current` : clé → URL chargée) et le plan :
- * ne recharge que les clés nouvelles ou dont l'URL a changé, retire les autres.
+ * Signature de rendu d'un plan : tout ce qui change les couches dessinées.
+ * L'URL porte déjà les drapeaux isolignes/flèches du vecteur ; on y ajoute ce
+ * qu'elle ne porte pas, seulement s'il diffère du défaut (signature = URL sinon) :
+ * opacité pour l'aplat, épaisseur pour le vecteur.
+ */
+export const overlayRenderSignature = (plan: OverlayLayerPlan): string => {
+	const { opacity, lineWidth } = plan.source;
+	if (plan.kind === 'raster') {
+		return opacity === undefined || opacity === 1 ? plan.url : `${plan.url}|o${opacity}`;
+	}
+	return lineWidth === undefined || lineWidth === 1 ? plan.url : `${plan.url}|w${lineWidth}`;
+};
+
+/**
+ * Écart entre les couches actives (`current` : clé → signature de rendu
+ * chargée, soit l'URL avec les réglages par défaut) et le plan : ne recharge
+ * que les clés nouvelles ou dont la signature a changé, retire les autres.
  */
 export const planOverlayUpdates = (
 	current: ReadonlyMap<string, string>,
@@ -90,7 +105,7 @@ export const planOverlayUpdates = (
 ): { update: OverlayLayerPlan[]; remove: string[] } => {
 	const desiredKeys = new Set(desired.map((plan) => plan.key));
 	return {
-		update: desired.filter((plan) => current.get(plan.key) !== plan.url),
+		update: desired.filter((plan) => current.get(plan.key) !== overlayRenderSignature(plan)),
 		remove: [...current.keys()].filter((key) => !desiredKeys.has(key))
 	};
 };
@@ -100,6 +115,11 @@ export interface OverlayStackHooks {
 	onReady: () => void;
 	/** Source en erreur (p. ex. 404 sur un domaine) : la couche est déjà effacée. */
 	onError: (mgr: SlotManager) => void;
+	/**
+	 * Manager détruit (superposition retirée, pile détruite) : il ne sera jamais
+	 * prêt ni en erreur, l'appelant doit le sortir du groupe de commit en vol.
+	 */
+	onDestroy: (mgr: SlotManager) => void;
 	/** Point d'insertion des aplats de superposition. */
 	rasterBefore: () => string;
 	/** Point d'insertion des isolignes/flèches de superposition. */
@@ -114,8 +134,8 @@ export interface OverlayStackHooks {
 
 interface OverlayEntry {
 	manager: SlotManager;
-	/** URL demandée en dernier (déduplication, même si le chargement a échoué). */
-	url: string;
+	/** Signature demandée en dernier (déduplication, même si le chargement a échoué). */
+	signature: string;
 	plan: OverlayLayerPlan;
 }
 
@@ -141,12 +161,21 @@ export class OverlayStack {
 	 * (`beginCommitGroup`), puis appeler `manager.update('om://' + url)`.
 	 */
 	sync(plans: OverlayLayerPlan[]): { manager: SlotManager; url: string }[] {
-		const current = new Map([...this.entries].map(([key, entry]) => [key, entry.url]));
+		const current = new Map([...this.entries].map(([key, entry]) => [key, entry.signature]));
 		const { update, remove } = planOverlayUpdates(current, plans);
 
 		for (const key of remove) {
-			this.entries.get(key)?.manager.destroy();
+			const entry = this.entries.get(key);
+			if (!entry) continue;
 			this.entries.delete(key);
+			this.destroyEntry(entry);
+		}
+
+		// Plan toujours rafraîchi, même sans rechargement : la layerFactory lit
+		// `entry.plan` au prochain `update()` (rechargement de style, d'unités…).
+		for (const plan of plans) {
+			const entry = this.entries.get(plan.key);
+			if (entry) entry.plan = plan;
 		}
 
 		// Points d'insertion relus à chaque passage (hillshade, masque océans…).
@@ -157,13 +186,11 @@ export class OverlayStack {
 		const toLoad: { manager: SlotManager; url: string }[] = [];
 		for (const plan of update) {
 			let entry = this.entries.get(plan.key);
-			if (entry) {
-				entry.url = plan.url;
-				entry.plan = plan;
-			} else {
+			if (!entry) {
 				entry = this.createEntry(plan);
 				this.entries.set(plan.key, entry);
 			}
+			entry.signature = overlayRenderSignature(plan);
 			toLoad.push({ manager: entry.manager, url: plan.url });
 		}
 		return toLoad;
@@ -177,8 +204,14 @@ export class OverlayStack {
 	}
 
 	destroyAll(): void {
-		for (const entry of this.entries.values()) entry.manager.destroy();
+		const entries = [...this.entries.values()];
 		this.entries.clear();
+		for (const entry of entries) this.destroyEntry(entry);
+	}
+
+	private destroyEntry(entry: OverlayEntry): void {
+		entry.manager.destroy();
+		this.hooks.onDestroy(entry.manager);
 	}
 
 	private beforeLayerFor(kind: OverlayLayerPlan['kind']): string {
@@ -190,7 +223,7 @@ export class OverlayStack {
 		const isRaster = plan.kind === 'raster';
 		// `entry` est lu par la layerFactory au moment de chaque `update()` : elle
 		// suit donc le plan courant (drapeaux, opacité, épaisseur).
-		const entry = { url: plan.url, plan } as OverlayEntry;
+		const entry = { signature: overlayRenderSignature(plan), plan } as OverlayEntry;
 		const manager: SlotManager = new SlotManager(this.map, {
 			sourceIdPrefix: `omOverlaySource_${tag}`,
 			beforeLayer: this.beforeLayerFor(plan.kind),
@@ -212,3 +245,23 @@ export class OverlayStack {
 		return entry;
 	}
 }
+
+/**
+ * Couche-repère invisible (fond `background` masqué, sans source) servant
+ * d'ancre aux aplats de superposition. Ajoutée une fois, juste sous `beforeId`
+ * (la plus basse des couches vecteur au moment de l'appel) : les aplats insérés
+ * avant elle restent sous TOUTES les couches vecteur (fond et superpositions),
+ * qui s'insèrent, elles, au-dessus. Le rechargement de style l'efface : à
+ * rappeler après chaque `setStyle` (`addOmFileLayers`).
+ */
+export const ensureAnchorLayer = (
+	map: maplibregl.Map,
+	id: string,
+	beforeId: string | undefined
+): void => {
+	if (map.getLayer(id)) return;
+	map.addLayer(
+		{ id, type: 'background', layout: { visibility: 'none' } },
+		beforeId && map.getLayer(beforeId) ? beforeId : undefined
+	);
+};

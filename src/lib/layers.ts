@@ -21,6 +21,7 @@ import {
 import { gridValues, vectorOptions as vO } from '$lib/stores/vector';
 import { arrowStyle, contourStyle } from '$lib/stores/vector-styles';
 
+import { CommitGroup } from '$lib/commit-group';
 import {
 	ANOMALY_DOMAIN,
 	BEFORE_LAYER_RASTER,
@@ -29,7 +30,13 @@ import {
 	BEFORE_LAYER_VECTOR_WATER_CLIP,
 	HILLSHADE_LAYER
 } from '$lib/constants';
-import { type OverlayLayerPlan, OverlayStack, desiredOverlayLayers } from '$lib/overlay-stack';
+import { DEPARTMENTS_LAYER_ID } from '$lib/departments-layer';
+import {
+	type OverlayLayerPlan,
+	OverlayStack,
+	desiredOverlayLayers,
+	ensureAnchorLayer
+} from '$lib/overlay-stack';
 import { SLOT_EVENT_COMMIT, SLOT_EVENT_ERROR, slotEvents } from '$lib/slot-events';
 import { type SlotLayer, SlotManager } from '$lib/slot-manager';
 import {
@@ -379,47 +386,24 @@ const vectorGridValuesLayer = (): SlotLayer => ({
 // Coordinateur de commit : fade-in synchronisé des couches actives
 // =============================================================================
 
-/** Managers dont on attend le commit groupé pour le tick courant. */
-let commitGroup: Set<SlotManager> | null = null;
+// Logique dans `commit-group.ts` (testable sans carte) ; wrappers locaux pour
+// garder les points d'appel inchangés.
+const commitGroup = new CommitGroup<SlotManager>({
+	onSettled: () => loading.set(false),
+	onFlushed: () => refreshPopup()
+});
 
 /** Démarre un nouveau groupe : appeler AVANT les `update()` correspondants. */
-const beginCommitGroup = (managers: SlotManager[]): void => {
-	commitGroup = managers.length > 0 ? new Set(managers) : null;
-	if (!commitGroup) loading.set(false);
-};
+const beginCommitGroup = (managers: SlotManager[]): void => commitGroup.begin(managers);
 
 /** Appelé par chaque manager (onReady) : committe tout le groupe quand tous sont prêts. */
-const tryFlushGroup = (): void => {
-	if (!commitGroup) return;
-	const members = [...commitGroup];
-	if (members.every((mgr) => mgr.isReady())) {
-		for (const mgr of members) mgr.commitNow();
-		commitGroup = null;
-		loading.set(false);
-		refreshPopup();
-	}
-};
+const tryFlushGroup = (): void => commitGroup.tryFlush();
 
 /** Ajoute un manager au groupe de commit courant, ou démarre un groupe s'il n'y en a pas. */
-const addToCommitGroup = (mgr: SlotManager): void => {
-	if (commitGroup) commitGroup.add(mgr);
-	else commitGroup = new Set([mgr]);
-};
+const addToCommitGroup = (mgr: SlotManager): void => commitGroup.add(mgr);
 
 /** Appelé par un manager en erreur : on le retire du groupe pour ne pas bloquer les autres. */
-const dropFromGroup = (mgr: SlotManager): void => {
-	if (!commitGroup) {
-		loading.set(false);
-		return;
-	}
-	commitGroup.delete(mgr);
-	if (commitGroup.size === 0) {
-		commitGroup = null;
-		loading.set(false);
-		return;
-	}
-	tryFlushGroup();
-};
+const dropFromGroup = (mgr: SlotManager): void => commitGroup.drop(mgr);
 
 // =============================================================================
 // Manager instances
@@ -470,6 +454,24 @@ const resolveVectorBeforeLayer = (map: maplibregl.Map, clipWater: boolean): stri
 // chaque `addOmFileLayers` (un rechargement de style efface sources et couches).
 let overlayStack: OverlayStack | undefined;
 
+/**
+ * Ancre des aplats de superposition : couche invisible posée sous toutes les
+ * couches vecteur (et sous les départements), au-dessus de l'aplat principal.
+ * `BEFORE_LAYER_RASTER_SECONDARY` vaut `BEFORE_LAYER_VECTOR` : ancrés là, les
+ * aplats recouvriraient isolignes, flèches et étiquettes insérées avant eux.
+ */
+const OVERLAY_RASTER_ANCHOR = 'omOverlayRasterAnchor';
+
+/** À appeler quand aucune couche vecteur OMfile n'est encore posée (après `setStyle`). */
+const ensureOverlayRasterAnchor = (map: maplibregl.Map): void =>
+	ensureAnchorLayer(
+		map,
+		OVERLAY_RASTER_ANCHOR,
+		map.getLayer(DEPARTMENTS_LAYER_ID)
+			? DEPARTMENTS_LAYER_ID
+			: resolveVectorBeforeLayer(map, get(p).clipWater)
+	);
+
 /** Couches MapLibre d'une superposition, via les builders du pipeline principal. */
 const overlayLayers = (plan: OverlayLayerPlan, tag: string): SlotLayer[] => {
 	const { source, flags } = plan;
@@ -493,7 +495,10 @@ const buildOverlayStack = (map: maplibregl.Map): OverlayStack =>
 		// Pas de toast : une superposition absente du domaine (404) disparaît
 		// simplement (clearOnError), sans bloquer le commit des autres couches.
 		onError: (mgr) => dropFromGroup(mgr),
-		rasterBefore: () => BEFORE_LAYER_RASTER_SECONDARY,
+		// Détruit alors qu'il attendait dans le groupe : ne doit pas bloquer le flush.
+		onDestroy: (mgr) => commitGroup.forget(mgr),
+		rasterBefore: () =>
+			map.getLayer(OVERLAY_RASTER_ANCHOR) ? OVERLAY_RASTER_ANCHOR : BEFORE_LAYER_RASTER_SECONDARY,
 		vectorBefore: () => resolveVectorBeforeLayer(map, get(p).clipWater),
 		layers: overlayLayers
 	});
@@ -602,6 +607,7 @@ export const addOmFileLayers = (): void => {
 	createManagers();
 	overlayStack?.destroyAll();
 	overlayStack = buildOverlayStack(map);
+	ensureOverlayRasterAnchor(map);
 	if (!omUrl) return;
 
 	const group: SlotManager[] = [];
@@ -712,6 +718,7 @@ export const changeOMfileURL = (vectorOnly = false, rasterOnly = false): void =>
 	// l'échéance) ; seules les couches dont l'URL change sont rechargées, les
 	// couches retirées sont détruites tout de suite. Ajoutées au groupe APRÈS les
 	// managers principaux. Sans superposition : liste vide, rien ne change.
+	const primaryCount = group.length;
 	const overlayLoads = overlayStack?.sync(overlayPlans()) ?? [];
 	for (const { manager } of overlayLoads) group.push(manager);
 
@@ -723,7 +730,14 @@ export const changeOMfileURL = (vectorOnly = false, rasterOnly = false): void =>
 	if (group.length === 0) return;
 
 	loading.set(true);
-	beginCommitGroup(group);
+	if (primaryCount > 0) {
+		beginCommitGroup(group);
+	} else {
+		// Seules des superpositions changent : on les fusionne dans le groupe en vol
+		// (comme reloadVectorStyle) au lieu de l'écraser, sinon un chargement
+		// principal en attente ne serait jamais committé.
+		for (const mgr of group) addToCommitGroup(mgr);
+	}
 	if (rasterUrl) rasterManager?.update('om://' + rasterUrl);
 	// arrowManager AVANT vectorManager (z-order : flèches sous contours/étiquettes).
 	if (arrowUrl) arrowManager?.update('om://' + arrowUrl);
