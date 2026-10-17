@@ -35,3 +35,18 @@ export function categoricalLegendEntries(scale: CategoricalColorScale): Categori
 		index
 	}));
 }
+
+/**
+ * Hauteur (px) d'un palier de légende : `max` idéalement, réduite pour que les
+ * `count` paliers tiennent dans `available` px (petits écrans), sans descendre
+ * sous `min` — en deçà la légende déborde plutôt que de devenir illisible.
+ */
+export function legendBlockHeight(count: number, available: number, max = 20, min = 8): number {
+	if (count <= 0) return max;
+	return Math.max(min, Math.min(max, Math.floor(available / count)));
+}
+
+/** Pas d'affichage des libellés (1 = tous, 2 = un sur deux…) pour qu'ils ne se chevauchent pas. */
+export function legendLabelStep(blockHeight: number, labelHeight = 14): number {
+	return Math.max(1, Math.ceil(labelHeight / blockHeight));
+}

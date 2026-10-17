@@ -1,7 +1,13 @@
 import { LEVEL_PREFIX } from '@openmeteo/weather-map-layer';
 import { describe, expect, it } from 'vitest';
 
-import { buildLevelGroups, buildVariableList, groupVariablesByCategory } from '$lib/layer-list';
+import {
+	buildLevelGroups,
+	buildVariableList,
+	groupVariablesByCategory,
+	searchVariables,
+	shortLevelLabel
+} from '$lib/layer-list';
 
 // Échantillon réaliste : surface, cumul, variable masquée, groupe de niveaux
 // (2 m + hPa dont un hors whitelist), composantes vent.
@@ -66,5 +72,44 @@ describe('groupVariablesByCategory', () => {
 		expect(all).not.toContain('wind_direction_10m');
 		expect(grouped.find((g) => g.cat.key === 'temperature')?.items).toContain('temperature_2m');
 		expect(grouped.find((g) => g.cat.key === 'precipitation')?.items).toContain('precipitation');
+	});
+});
+
+describe('searchVariables', () => {
+	const labels: Record<string, string> = {
+		temperature_2m: 'Température 2 m',
+		precipitation: 'Précipitations',
+		wind_gusts_10m: 'Rafales de vent 10 m'
+	};
+	const list = Object.keys(labels);
+	const labelOf = (v: string) => labels[v];
+
+	it('renvoie la liste telle quelle pour une requête vide', () => {
+		expect(searchVariables(list, '  ', labelOf)).toEqual(list);
+	});
+
+	it('ignore accents et casse', () => {
+		expect(searchVariables(list, 'PRECIP', labelOf)).toEqual(['precipitation']);
+		expect(searchVariables(list, 'température', labelOf)).toEqual(['temperature_2m']);
+	});
+
+	it("cherche aussi dans l'identifiant technique", () => {
+		expect(searchVariables(list, 'gusts', labelOf)).toEqual(['wind_gusts_10m']);
+	});
+
+	it('exige tous les mots', () => {
+		expect(searchVariables(list, 'vent 10', labelOf)).toEqual(['wind_gusts_10m']);
+		expect(searchVariables(list, 'vent 2', labelOf)).toEqual([]);
+	});
+});
+
+describe('shortLevelLabel', () => {
+	it('extrait niveau + unité', () => {
+		expect(shortLevelLabel('temperature_500hPa', 'x')).toBe('500 hPa');
+		expect(shortLevelLabel('temperature_2m', 'x')).toBe('2 m');
+	});
+
+	it('retombe sur le libellé fourni sans niveau', () => {
+		expect(shortLevelLabel('precipitation', 'Précipitations')).toBe('Précipitations');
 	});
 });

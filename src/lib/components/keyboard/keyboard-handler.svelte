@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onDestroy, onMount } from 'svelte';
+	import { onDestroy, onMount, tick } from 'svelte';
 	import { get } from 'svelte/store';
 
 	import { toast } from 'svelte-sonner';
@@ -8,7 +8,7 @@
 
 	import { timeSelectorActions } from '$lib/stores/keyboard';
 	import { popup, popupMode } from '$lib/stores/map';
-	import { helpOpen } from '$lib/stores/preferences';
+	import { desktop, helpOpen, sidebarCollapsed, sidebarTab } from '$lib/stores/preferences';
 	import { domainSelectionOpen } from '$lib/stores/variables';
 
 	import { switchPopupMode } from '$lib/popup';
@@ -26,6 +26,15 @@
 		// Help Dialog and Popup actions
 		if (event.key === 'h') {
 			helpOpen.set(!get(helpOpen));
+			return;
+		}
+
+		// Recherche de variable : ouvre l'onglet « Données » du panneau et y focalise
+		if (event.key === '/' && desktop.current) {
+			event.preventDefault();
+			sidebarCollapsed.set(false);
+			sidebarTab.set('layers');
+			tick().then(() => document.getElementById('variable-search')?.focus());
 			return;
 		}
 
@@ -50,6 +59,11 @@
 
 		// Model Selection Navigation
 		if (!event.ctrlKey && !get(domainSelectionOpen) && event.key === 'd') {
+			// Le sélecteur vit dans l'onglet « Données » : on l'affiche d'abord.
+			if (desktop.current) {
+				sidebarCollapsed.set(false);
+				sidebarTab.set('layers');
+			}
 			domainSelectionOpen.set(true);
 			return;
 		}

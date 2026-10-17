@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { tick } from 'svelte';
 	import { MediaQuery } from 'svelte/reactivity';
+	import { innerHeight } from 'svelte/reactivity/window';
 
 	import { type RenderableColorScale, getColor, getColorScale } from '@openmeteo/weather-map-layer';
 	import { mode } from 'mode-watcher';
@@ -33,7 +34,12 @@
 	import * as Select from '$lib/components/ui/select';
 
 	import { getAlpha, hexToRgba, rgbaToHex } from '$lib/color';
-	import { categoricalLegendEntries, isCategorical } from '$lib/color-scales/legend';
+	import {
+		categoricalLegendEntries,
+		isCategorical,
+		legendBlockHeight,
+		legendLabelStep
+	} from '$lib/color-scales/legend';
 	import { textWhite } from '$lib/helpers';
 	import { changeOMfileURL, reloadVectorStyle } from '$lib/layers';
 	import { refreshPopup } from '$lib/popup';
@@ -148,7 +154,24 @@
 	// légende (ancrée en bas à gauche) le chevaucherait. On la masque tant qu'il
 	// est ouvert (desktop : la légende se décale déjà via pointDrawerHeight).
 	const hiddenByDrawer = $derived(isMobile && $pointWorkspace.open);
-	const colorBlockHeight = $derived(isMobile && labeledColors.length >= 20 ? 10 : 20);
+	// Hauteur verticale disponible pour les paliers : fenêtre moins header (44) +
+	// bande de contexte (26) + marge haute, moins l'ancrage bas (tiroir météogramme
+	// desktop / timeline mobile) et ~70 px pour l'unité et les boutons d'édition.
+	// Sans ça, 35 paliers × 20 px débordaient sous le header sur un 14″ (720-768 px).
+	const legendAvailable = $derived(
+		(innerHeight.current ?? 900) -
+			82 -
+			(desktop.current ? $pointDrawerHeight + 10 : $bottomChromeHeight + 72) -
+			70
+	);
+	const colorBlockHeight = $derived(
+		legendBlockHeight(
+			labeledColors.length,
+			legendAvailable,
+			isMobile && labeledColors.length >= 20 ? 10 : 20
+		)
+	);
+	const labelStep = $derived(legendLabelStep(colorBlockHeight));
 	// Catégories affichables dans la légende (code 0 « Aucune » = transparent, masqué).
 	const visibleCategoryEntries = $derived(categoryEntries.filter((e) => e.code !== 0));
 	// Nombre d'items réellement rendus dans la légende (catégoriel vs paliers numériques) —
@@ -250,7 +273,7 @@
 					<!-- Labels column - positioned between buttons -->
 					<div class="flex flex-col-reverse" style="width: {labelWidth}px;">
 						{#each labeledColors as lc, i (lc)}
-							{#if i > 0 && !(labeledColors.length > 20 && i % 2 === 1 && !desktop.current)}
+							{#if i > 0 && i % labelStep === 0}
 								<div
 									class="absolute flex items-center justify-center text-xs z-20 pointer-events-none"
 									style={`bottom: ${i * colorBlockHeight - 6}px; height: 12px; width: ${labelWidth}px;

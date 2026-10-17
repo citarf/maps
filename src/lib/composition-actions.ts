@@ -43,6 +43,15 @@ export const applySavedComposition = (id: string): void => {
 	setComposition(saved.composition);
 };
 
+/**
+ * Change le fond sans toucher aux superpositions : pour bâtir une composition
+ * pas à pas depuis l'onglet « Compositions ». L'abonnement `variable` de
+ * `+page.svelte` met l'URL à jour et recharge les couches.
+ */
+export const setBaseVariable = (name: string): void => {
+	variable.set(name);
+};
+
 export const addOverlay = (name: string): void => {
 	if (get(overlays).some((o) => o.variable === name)) return;
 	overlays.update((list) => [...list, defaultOverlayFor(name, get(vectorOptions).arrows)]);

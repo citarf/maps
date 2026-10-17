@@ -54,6 +54,9 @@ export const advancedOpen = writable(false);
 // publiée par le composant pour décaler timeline/légende (0 quand démontée — mobile).
 export const sidebarCollapsed = persisted('sidebar-collapsed', false);
 export const sidebarWidth = writable(0);
+// Onglet actif du panneau latéral (desktop) / du bottom-sheet (mobile).
+export type SidebarTab = 'layers' | 'compositions' | 'map';
+export const sidebarTab = persisted<SidebarTab>('sidebar-tab', 'layers');
 
 export const loading = writable(true);
 
@@ -139,6 +142,7 @@ export const resetStates = async () => {
 
 	helpOpen.set(false);
 	sidebarCollapsed.set(false);
+	sidebarTab.set('layers');
 	scaleCollapsed.set(true);
 
 	setMode('dark');
