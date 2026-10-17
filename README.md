@@ -107,7 +107,7 @@ Voir [`.claude/CLAUDE.md`](./.claude/CLAUDE.md) et les règles ciblées dans [`.
 - sondages verticaux client-side (Skew-T + hodographe + indices convectifs) calculés depuis les OMfiles AROME niveaux de pression au point cliqué (`src/lib/sounding/`)
 - compositions de cartes (fond + superpositions d'isolignes/flèches, compositions toutes faites et enregistrées ; portage des « Combined charts » d'open-meteo/maps #361) : `composition.ts`, `overlay-stack.ts`, `stores/composition.ts`, paramètre d'URL `overlays`
 
-Le chrome s'organise autour d'un header fin pleine largeur (marque Infoclimat, onglet « Carte », bouton « Réglages » ouvrant le panneau Avancé) et, sur desktop, d'une sidebar gauche repliable (sélecteur de modèle, liste verticale des calques, sections Affichage et Style) ; sur mobile, un bottom-sheet à onglets reprend les mêmes sections. La timeline et la légende se décalent de la largeur de la sidebar ; les contrôles MapLibre natifs sont ancrés en bas-droite au-dessus de la timeline.
+Le chrome s'organise autour d'un header fin pleine largeur (marque Infoclimat, onglet « Carte », bouton « Réglages » ouvrant le panneau Avancé) et, sur desktop, d'une sidebar gauche à rail d'onglets — **Données** (modèle, recherche et liste des variables, niveaux en puces), **Compositions** (superpositions), **Carte** (calque météo, fond de carte, interaction) — dont le panneau se replie sur le rail ; sur mobile, un bottom-sheet reprend les mêmes trois onglets. La timeline et la légende se décalent de la largeur de la sidebar ; les contrôles MapLibre natifs sont ancrés en bas-droite au-dessus de la timeline.
 
 ## Crédits & licence
 

@@ -115,7 +115,7 @@
 								: 'cursor-not-allowed opacity-40'} {selected ? 'text-sky-300' : 'text-white'}"
 						>
 							<span class="min-w-0 flex-1">
-								<span class="block truncate">{preset.label}</span>
+								<span class="line-clamp-2 block">{preset.label}</span>
 								{#if preset.description}
 									<span
 										class="block truncate text-[11px] {selected

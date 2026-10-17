@@ -130,6 +130,9 @@
 						<li class="flex items-center gap-2.5">
 							<Kbd.Root>d</Kbd.Root> <span>Sélection du domaine (modèle)</span>
 						</li>
+						<li class="flex items-center gap-2.5">
+							<Kbd.Root>/</Kbd.Root> <span>Rechercher une variable</span>
+						</li>
 					{/if}
 					<li class="flex items-start gap-2.5">
 						<Layers2Icon class="mt-0.5 size-4.5 shrink-0 opacity-75" />

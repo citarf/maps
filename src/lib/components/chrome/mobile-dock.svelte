@@ -2,26 +2,23 @@
 	import ChevronUpIcon from '@lucide/svelte/icons/chevron-up';
 	import LayersIcon from '@lucide/svelte/icons/layers';
 
+	import { overlays } from '$lib/stores/composition';
 	import { pointWorkspace } from '$lib/stores/point-workspace';
-	import { bottomChromeHeight } from '$lib/stores/preferences';
+	import { bottomChromeHeight, sidebarTab } from '$lib/stores/preferences';
 
-	import CompositionPanel from '$lib/components/composition/composition-panel.svelte';
 	import * as Sheet from '$lib/components/ui/sheet';
 
-	import LayerList from './layer-list.svelte';
-	import ModelSelector from './model-selector.svelte';
+	import PanelContent from './panel-content.svelte';
+	import { SIDEBAR_TABS } from './sidebar-tabs';
 
 	import type { Snippet } from 'svelte';
 
 	interface Props {
 		capture?: Snippet;
-		display?: Snippet;
-		style?: Snippet;
 	}
-	let { capture, display, style }: Props = $props();
+	let { capture }: Props = $props();
 
 	let open = $state(false);
-	let activeTab: 'layers' | 'display' = $state('layers');
 </script>
 
 <!-- FAB + poignée masqués quand le tiroir météogramme est ouvert : il couvre la
@@ -41,7 +38,7 @@
 		style="bottom: calc({$bottomChromeHeight}px + 0.5rem)"
 	>
 		<LayersIcon class="size-4" aria-hidden="true" />
-		Calques &amp; affichage
+		Données &amp; carte
 		<ChevronUpIcon class="size-4 opacity-60" aria-hidden="true" />
 	</button>
 {/if}
@@ -51,47 +48,39 @@
 		side="bottom"
 		class="bg-glass/90 z-100 flex max-h-[85vh] flex-col gap-0 border-none text-white backdrop-blur-xl"
 	>
-		<Sheet.Title class="sr-only">Calques &amp; affichage</Sheet.Title>
-		<!-- Onglets (cibles ≥ 44 px, gap ≥ 8 px) ; le corps seul défile. -->
-		<div role="tablist" aria-label="Réglages carte" class="flex shrink-0 gap-2 px-4 pt-4">
-			<button
-				type="button"
-				role="tab"
-				aria-selected={activeTab === 'layers'}
-				onclick={() => (activeTab = 'layers')}
-				class="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 min-h-11 flex-1 cursor-pointer rounded-lg text-sm font-medium {activeTab ===
-				'layers'
-					? 'bg-white/12 text-sky-300'
-					: 'text-white/70 hover:bg-white/[0.05]'}"
-			>
-				Calques
-			</button>
-			<button
-				type="button"
-				role="tab"
-				aria-selected={activeTab === 'display'}
-				onclick={() => (activeTab = 'display')}
-				class="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 min-h-11 flex-1 cursor-pointer rounded-lg text-sm font-medium {activeTab ===
-				'display'
-					? 'bg-white/12 text-sky-300'
-					: 'text-white/70 hover:bg-white/[0.05]'}"
-			>
-				Affichage &amp; style
-			</button>
+		<Sheet.Title class="sr-only">Données &amp; carte</Sheet.Title>
+		<!-- Onglets segmentés (cibles ≥ 44 px), mêmes sections que la sidebar desktop ;
+		     le corps seul défile. -->
+		<div
+			role="tablist"
+			aria-label="Réglages carte"
+			class="mt-4 mr-12 ml-4 flex shrink-0 gap-1 rounded-xl bg-white/[0.06] p-1"
+		>
+			{#each SIDEBAR_TABS as tab (tab.key)}
+				{@const active = $sidebarTab === tab.key}
+				{@const badge = tab.key === 'compositions' ? $overlays.length : 0}
+				<button
+					type="button"
+					role="tab"
+					aria-selected={active}
+					onclick={() => sidebarTab.set(tab.key)}
+					class="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 flex min-h-11 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg text-sm font-medium transition-colors {active
+						? 'bg-white/12 text-sky-300 shadow-sm'
+						: 'text-white/65 hover:text-white'}"
+				>
+					<tab.icon class="size-4 shrink-0" aria-hidden="true" />
+					<span class="truncate">{tab.label}</span>
+					{#if badge}
+						<span
+							class="rounded-full bg-sky-400 px-1.5 text-[10px] font-semibold text-slate-950 tabular-nums"
+							>{badge}</span
+						>
+					{/if}
+				</button>
+			{/each}
 		</div>
 		<div class="scrollbar-thin min-h-0 flex-1 overflow-y-auto px-4 pt-3 pb-8">
-			{#if activeTab === 'layers'}
-				<div class="mb-3 flex justify-center"><ModelSelector /></div>
-				<LayerList />
-				<div class="my-4 border-t border-white/10"></div>
-				<div class="mb-2 px-2 text-xs font-semibold tracking-wide text-white/45 uppercase">
-					Compositions
-				</div>
-				<CompositionPanel />
-			{:else}
-				{@render display?.()}
-				<div class="mt-4">{@render style?.()}</div>
-			{/if}
+			<PanelContent tab={$sidebarTab} />
 		</div>
 	</Sheet.Content>
 </Sheet.Root>

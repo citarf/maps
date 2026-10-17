@@ -86,3 +86,35 @@ export function groupVariablesByCategory(list: string[]): { cat: Category; items
 	}
 	return groups;
 }
+
+/** Minuscules sans diacritiques : « Précip » trouve « precipitations ». */
+export function normalizeSearch(text: string): string {
+	return text
+		.normalize('NFD')
+		.replace(/\p{Diacritic}/gu, '')
+		.toLowerCase()
+		.trim();
+}
+
+/**
+ * Filtre les variables par libellé (FR) ou identifiant technique, tous mots
+ * requis, insensible aux accents. Requête vide → liste inchangée.
+ */
+export function searchVariables(
+	list: string[],
+	query: string,
+	labelOf: (value: string) => string
+): string[] {
+	const terms = normalizeSearch(query).split(/\s+/).filter(Boolean);
+	if (!terms.length) return list;
+	return list.filter((value) => {
+		const haystack = normalizeSearch(`${labelOf(value)} ${value.replaceAll('_', ' ')}`);
+		return terms.every((term) => haystack.includes(term));
+	});
+}
+
+/** Libellé court d'un niveau pour une puce (`temperature_500hPa` → « 500 hPa »). */
+export function shortLevelLabel(value: string, fallback: string): string {
+	const groups = value.match(LEVEL_UNIT_REGEX)?.groups;
+	return groups?.level && groups?.unit ? `${groups.level} ${groups.unit}` : fallback;
+}

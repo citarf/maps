@@ -18,6 +18,12 @@
 
 	import { MODEL_BADGES, MODEL_DESCRIPTIONS, MODEL_SELECTOR_GROUPS } from '$lib/constants';
 
+	interface Props {
+		/** `pill` : bouton compact ; `card` : pleine largeur sur deux lignes (panneau). */
+		variant?: 'pill' | 'card';
+	}
+	let { variant = 'pill' }: Props = $props();
+
 	let open = $state(get(dSO));
 	const unsub = dSO.subscribe((v) => (open = v));
 	onDestroy(unsub);
@@ -130,39 +136,74 @@
 <Popover.Root bind:open onOpenChange={(e) => dSO.set(e)}>
 	<Popover.Trigger>
 		{#snippet child({ props })}
-			<Button
-				{...props}
-				variant="outline"
-				class="bg-glass/85 hover:bg-glass/95 h-10 md:h-9 cursor-pointer items-center gap-2 rounded-full border border-white/15 px-2.5 py-1 text-white shadow-md glass-blur transition-colors"
-				role="combobox"
-				aria-expanded={open}
-				aria-label="Choisir le modèle météo"
-			>
-				<GlobeIcon class="size-4 shrink-0 text-sky-300" aria-hidden="true" />
-				<span class="hidden min-w-0 truncate sm:inline">
-					{$selectedDomain?.label || 'Choisir un modèle'}
-				</span>
-				<span class="min-w-0 truncate sm:hidden">
-					{$selectedDomain?.label || 'Modèle'}
-				</span>
-				{#if selectedBadge}
+			{#if variant === 'card'}
+				<button
+					{...props}
+					type="button"
+					class="group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 flex w-full cursor-pointer items-center gap-3 rounded-xl border border-white/10 bg-white/[0.05] p-2.5 text-left [@media(max-height:820px)]:py-2 transition-colors hover:border-white/20 hover:bg-white/[0.08]"
+					role="combobox"
+					aria-expanded={open}
+					aria-label="Choisir le modèle météo"
+				>
 					<span
-						class="bg-white/15 hidden rounded-full px-2 py-0.5 text-[10px] font-medium tracking-wide text-white/80 sm:inline"
+						class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-sky-400/15 text-sky-300"
 					>
-						{selectedBadge}
+						<GlobeIcon class="size-[18px]" aria-hidden="true" />
 					</span>
-				{/if}
-				<ChevronDownIcon
-					class="size-4 shrink-0 opacity-60 transition-transform duration-200 {open
-						? 'rotate-180'
-						: ''}"
-					aria-hidden="true"
-				/>
-			</Button>
+					<span class="min-w-0 flex-1">
+						<span class="block text-[11px] text-white/45 [@media(max-height:820px)]:hidden"
+							>Modèle</span
+						>
+						<span class="block truncate text-sm font-medium text-white">
+							{$selectedDomain?.label || 'Choisir un modèle'}
+						</span>
+						{#if selectedBadge}
+							<span class="block truncate text-[11px] text-white/55">{selectedBadge}</span>
+						{/if}
+					</span>
+					<ChevronDownIcon
+						class="size-4 shrink-0 text-white/45 transition-transform duration-200 group-hover:text-white/70 {open
+							? 'rotate-180'
+							: ''}"
+						aria-hidden="true"
+					/>
+				</button>
+			{:else}
+				<Button
+					{...props}
+					variant="outline"
+					class="bg-glass/85 hover:bg-glass/95 h-10 md:h-9 cursor-pointer items-center gap-2 rounded-full border border-white/15 px-2.5 py-1 text-white shadow-md glass-blur transition-colors"
+					role="combobox"
+					aria-expanded={open}
+					aria-label="Choisir le modèle météo"
+				>
+					<GlobeIcon class="size-4 shrink-0 text-sky-300" aria-hidden="true" />
+					<span class="hidden min-w-0 truncate sm:inline">
+						{$selectedDomain?.label || 'Choisir un modèle'}
+					</span>
+					<span class="min-w-0 truncate sm:hidden">
+						{$selectedDomain?.label || 'Modèle'}
+					</span>
+					{#if selectedBadge}
+						<span
+							class="bg-white/15 hidden rounded-full px-2 py-0.5 text-[10px] font-medium tracking-wide text-white/80 sm:inline"
+						>
+							{selectedBadge}
+						</span>
+					{/if}
+					<ChevronDownIcon
+						class="size-4 shrink-0 opacity-60 transition-transform duration-200 {open
+							? 'rotate-180'
+							: ''}"
+						aria-hidden="true"
+					/>
+				</Button>
+			{/if}
 		{/snippet}
 	</Popover.Trigger>
 	<Popover.Content
 		tabindex={0}
+		align={variant === 'card' ? 'start' : 'center'}
 		onOpenAutoFocus={(e) => {
 			// Empêche l'autofocus de l'input de recherche : sur mobile il ferait monter
 			// le clavier virtuel, qui compresse la liste et capte le geste de scroll.

@@ -9,8 +9,8 @@
 </script>
 
 <div class="flex items-center gap-3 px-3 py-2.5">
-	<BlendIcon class="size-[18px] shrink-0 text-white/55" aria-hidden="true" />
-	<Label class="shrink-0 cursor-pointer text-sm" for="raster-opacity">Opacité raster</Label>
+	<BlendIcon class="size-[18px] shrink-0" aria-hidden="true" />
+	<Label class="shrink-0 cursor-pointer text-sm" for="raster-opacity">Opacité</Label>
 	<input
 		id="raster-opacity"
 		class="min-w-0 flex-1 delay-75 duration-200"

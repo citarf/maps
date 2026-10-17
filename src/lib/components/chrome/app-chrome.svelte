@@ -5,12 +5,10 @@
 
 	import AdvancedPanel from './advanced-panel.svelte';
 	import ContextStrip from './context-strip.svelte';
-	import DisplaySection from './display-section.svelte';
 	import Header from './header.svelte';
 	import MapActions from './map-actions.svelte';
 	import MobileDock from './mobile-dock.svelte';
 	import Sidebar from './sidebar.svelte';
-	import StyleSection from './style-section.svelte';
 </script>
 
 <Header>
@@ -32,17 +30,12 @@
 </div>
 
 {#if desktop.current}
-	<Sidebar>
-		{#snippet display()}<DisplaySection />{/snippet}
-		{#snippet style()}<StyleSection />{/snippet}
-	</Sidebar>
+	<Sidebar />
 	<AdvancedPanel />
 	<MapActions />
 {:else}
 	<MobileDock>
 		{#snippet capture()}<CaptureFlow variant="fab" />{/snippet}
-		{#snippet display()}<DisplaySection />{/snippet}
-		{#snippet style()}<StyleSection />{/snippet}
 	</MobileDock>
 	<AdvancedPanel />
 {/if}

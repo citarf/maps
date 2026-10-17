@@ -13,6 +13,7 @@
 
 	import ArrowsSettings from '$lib/components/settings/arrows-settings.svelte';
 	import ContourSettings from '$lib/components/settings/contour-settings.svelte';
+	import OpacitySetting from '$lib/components/settings/opacity-setting.svelte';
 	import PopupSettings from '$lib/components/settings/popup-settings.svelte';
 
 	import { setHillshadeEnabled } from '$lib/hillshade';
@@ -20,6 +21,8 @@
 	import { updateUrl } from '$lib/url';
 
 	import LayerToggle from './layer-toggle.svelte';
+
+	import type { Snippet } from 'svelte';
 
 	const gridValuesOn = $derived($gridValues);
 	const departmentsOn = $derived($showDepartments);
@@ -62,22 +65,30 @@
 	}
 </script>
 
-<!-- Calques riches (dépliables) + lecture du champ -->
-<div
-	class="overflow-hidden rounded-xl bg-white/[0.04] [&>*+*]:border-t [&>*+*]:border-white/[0.06]"
->
+{#snippet group(title: string, hint: string, body: Snippet)}
+	<section class="flex flex-col gap-1.5">
+		<div class="px-1">
+			<h3 class="text-xs font-semibold text-white/80">{title}</h3>
+			<p class="text-[11px] text-white/40 [@media(max-height:820px)]:hidden">{hint}</p>
+		</div>
+		<div
+			class="overflow-hidden rounded-xl bg-white/[0.04] [&>*+*]:border-t [&>*+*]:border-white/[0.06]"
+		>
+			{@render body()}
+		</div>
+	</section>
+{/snippet}
+
+{#snippet weather()}
 	<ContourSettings />
 	<ArrowsSettings />
-	<LayerToggle label="Valeurs" checked={gridValuesOn} onCheckedChange={toggleGridValues}>
+	<LayerToggle label="Valeurs aux points" checked={gridValuesOn} onCheckedChange={toggleGridValues}>
 		{#snippet icon()}<HashIcon class="size-[18px]" aria-hidden="true" />{/snippet}
 	</LayerToggle>
-	<PopupSettings />
-</div>
+	<OpacitySetting />
+{/snippet}
 
-<!-- Habillage de la carte -->
-<div
-	class="mt-2.5 overflow-hidden rounded-xl bg-white/[0.04] [&>*+*]:border-t [&>*+*]:border-white/[0.06]"
->
+{#snippet basemap()}
 	<LayerToggle label="Départements" checked={departmentsOn} onCheckedChange={toggleDepartments}>
 		{#snippet icon()}<MapIcon class="size-[18px]" aria-hidden="true" />{/snippet}
 	</LayerToggle>
@@ -87,7 +98,17 @@
 	<LayerToggle label="Relief ombré" checked={hillshadeOn} onCheckedChange={toggleHillshade}>
 		{#snippet icon()}<MountainIcon class="size-[18px]" aria-hidden="true" />{/snippet}
 	</LayerToggle>
-	<LayerToggle label="Mode sombre" checked={darkOn} onCheckedChange={toggleDark}>
+	<LayerToggle label="Fond sombre" checked={darkOn} onCheckedChange={toggleDark}>
 		{#snippet icon()}<MoonIcon class="size-[18px]" aria-hidden="true" />{/snippet}
 	</LayerToggle>
+{/snippet}
+
+{#snippet interaction()}
+	<PopupSettings />
+{/snippet}
+
+<div class="flex flex-col gap-4">
+	{@render group('Calque météo', 'Lecture du champ affiché', weather)}
+	{@render group('Fond de carte', 'Repères géographiques', basemap)}
+	{@render group('Interaction', 'Lecture de valeur au pointeur', interaction)}
 </div>
