@@ -18,6 +18,7 @@ import {
 import { getInitialMetaData, getMetaData } from '$lib/metadata';
 
 import { DEFAULT_BASEMAP_THEME, basemapTheme } from './basemap-theme';
+import { overlays } from './composition';
 import { DEFAULT_SHOW_DEPARTMENTS, showDepartments } from './departments';
 import { cacheBlockSizeKb, cacheMaxBytesMb, customColorScales } from './om-protocol-settings';
 import { inProgress, latest, metaJson, modelRun, modelRunLocked, now, time } from './time';
@@ -116,6 +117,9 @@ export const resetStates = async () => {
 
 	domain.set(DEFAULT_DOMAIN);
 	variable.set(DEFAULT_VARIABLE);
+	// Superpositions remises à zéro ; les compositions enregistrées
+	// (`savedCompositions`, données utilisateur) sont volontairement conservées.
+	overlays.set([]);
 
 	domainSelectionOpen.set(false);
 

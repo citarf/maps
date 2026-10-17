@@ -2,7 +2,12 @@ import { get } from 'svelte/store';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { activePresetId, overlays, savedCompositions } from '$lib/stores/composition';
+import {
+	activePresetId,
+	normalizeOverlays,
+	overlays,
+	savedCompositions
+} from '$lib/stores/composition';
 import { variable } from '$lib/stores/variables';
 
 import {
@@ -81,5 +86,30 @@ describe('actions de composition', () => {
 		expect(get(overlays)).toEqual([{ variable: 'pressure_msl', contours: true }]);
 		deleteSavedComposition(id);
 		expect(get(savedCompositions).compositions).toHaveLength(0);
+	});
+});
+
+describe('normalizeOverlays (lecture du localStorage)', () => {
+	it('garde une liste valide telle quelle', () => {
+		const list = [{ variable: 'pressure_msl', contours: true, contourInterval: 4 }];
+		expect(normalizeOverlays(list)).toEqual(list);
+	});
+
+	it('fusionne les variables en double', () => {
+		expect(
+			normalizeOverlays([
+				{ variable: 'pressure_msl', contours: true },
+				{ variable: 'pressure_msl', arrows: true }
+			])
+		).toEqual([{ variable: 'pressure_msl', contours: true, arrows: true }]);
+	});
+
+	it('retombe sur [] pour une valeur corrompue', () => {
+		expect(normalizeOverlays(null)).toEqual([]);
+		expect(normalizeOverlays('x')).toEqual([]);
+		expect(normalizeOverlays([null])).toEqual([]);
+		expect(normalizeOverlays([{ contours: true }])).toEqual([]);
+		expect(normalizeOverlays([{ variable: 'bad var!', contours: true }])).toEqual([]);
+		expect(normalizeOverlays([{ variable: 'pressure_msl', opacity: 'x' }])).toEqual([]);
 	});
 });

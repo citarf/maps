@@ -96,16 +96,29 @@ export const overlayRenderSignature = (plan: OverlayLayerPlan): string => {
 
 /**
  * Écart entre les couches actives (`current` : clé → signature de rendu
- * chargée, soit l'URL avec les réglages par défaut) et le plan : ne recharge
- * que les clés nouvelles ou dont la signature a changé, retire les autres.
+ * chargée, soit l'URL avec les réglages par défaut) et le plan : recharge les
+ * clés nouvelles ou dont la signature a changé (plus les aplats qui suivent un
+ * aplat rechargé, pour l'ordre d'empilement), retire les autres.
  */
 export const planOverlayUpdates = (
 	current: ReadonlyMap<string, string>,
 	desired: OverlayLayerPlan[]
 ): { update: OverlayLayerPlan[]; remove: string[] } => {
 	const desiredKeys = new Set(desired.map((plan) => plan.key));
+	const changed = new Set(
+		desired.filter((plan) => current.get(plan.key) !== overlayRenderSignature(plan))
+	);
+	// Ordre d'empilement des aplats : chacun est inséré juste sous la même ancre,
+	// donc le dernier rechargé passe au-dessus. Si un aplat se recharge seul, on
+	// recharge aussi les aplats actifs qui le suivent dans la liste, dans l'ordre,
+	// pour qu'ils restent au-dessus de lui.
+	const firstRaster = desired.findIndex((plan) => plan.kind === 'raster' && changed.has(plan));
 	return {
-		update: desired.filter((plan) => current.get(plan.key) !== overlayRenderSignature(plan)),
+		update: desired.filter(
+			(plan, i) =>
+				changed.has(plan) ||
+				(firstRaster >= 0 && i > firstRaster && plan.kind === 'raster' && current.has(plan.key))
+		),
 		remove: [...current.keys()].filter((key) => !desiredKeys.has(key))
 	};
 };

@@ -235,12 +235,12 @@ export const chartPresets: ChartPreset[] = [
 	{
 		id: 'wind_cloud_rain',
 		label: 'Vent + couverture nuageuse + précipitations',
-		description: 'Flèches de vent sous les nuages et les précipitations',
+		description: 'Vent (aplat et flèches), nuages et précipitations',
 		group: 'Précipitations',
 		sources: [
-			// inlineVectors : les flèches sont dessinées directement sur le raster
-			// de vent, de sorte que les rasters de nuages et de précipitations
-			// au-dessus les recouvrent
+			// inlineVectors (upstream) : flèches dessinées sur le raster de vent, sous
+			// les nuages et les précipitations. Ignoré en v1 chez nous : les flèches
+			// restent au-dessus des aplats.
 			{
 				variable: 'wind_u_component_10m',
 				raster: true,

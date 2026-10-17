@@ -255,3 +255,55 @@ describe('OverlayStack.owns', () => {
 		expect(stack.owns(manager)).toBe(false);
 	});
 });
+
+describe('ordre d’empilement des aplats', () => {
+	const sources: ChartSource[] = [
+		{ variable: 'cloud_cover_low', raster: true },
+		{ variable: 'geopotential_height_500hPa', contours: true },
+		{ variable: 'temperature_850hPa_bis', raster: true },
+		{ variable: 'precip', raster: true }
+	];
+	const plan = (opacity?: number) =>
+		sources.map((source, index) => {
+			const s = index === 0 && opacity !== undefined ? { ...source, opacity } : source;
+			const kind = s.raster ? 'raster' : 'vector';
+			return {
+				key: `${index}:${s.variable}:${kind}`,
+				kind,
+				url: `u/${s.variable}`,
+				source: s,
+				flags: { raster: !!s.raster, contours: !!s.contours, arrows: false }
+			} as const;
+		});
+
+	it('un aplat rechargé seul entraîne le rechargement des aplats suivants, dans l’ordre', () => {
+		const loaded = plan();
+		const current = new Map(loaded.map((p) => [p.key, p.url]));
+		const { update } = planOverlayUpdates(current, plan(0.5));
+		expect(update.map((p) => p.key)).toEqual([
+			'0:cloud_cover_low:raster',
+			'2:temperature_850hPa_bis:raster',
+			'3:precip:raster'
+		]);
+	});
+
+	it('le dernier aplat rechargé seul ne recharge rien d’autre', () => {
+		const loaded = plan();
+		const current = new Map(loaded.map((p) => [p.key, p.url]));
+		const desired = loaded.map((p, i) =>
+			i === 3 ? { ...p, source: { ...p.source, opacity: 0.5 } } : p
+		);
+		expect(planOverlayUpdates(current, desired).update.map((p) => p.key)).toEqual([
+			'3:precip:raster'
+		]);
+	});
+
+	it('un vecteur rechargé seul ne recharge aucun aplat', () => {
+		const loaded = plan();
+		const current = new Map(loaded.map((p) => [p.key, p.url]));
+		const desired = loaded.map((p, i) => (i === 1 ? { ...p, url: 'u/autre' } : p));
+		expect(planOverlayUpdates(current, desired).update.map((p) => p.key)).toEqual([
+			'1:geopotential_height_500hPa:vector'
+		]);
+	});
+});
