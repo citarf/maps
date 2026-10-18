@@ -24,7 +24,7 @@ const TIMEOUT = {
 
 describe('displayedAfterCommit', () => {
 	it('seul un slot montré ou effacé change l’état affiché', () => {
-		const shownA = displayedAfterCommit('shown', A, null);
+		const shownA = displayedAfterCommit('shown', A, null, true);
 		expect(shownA).toEqual({
 			runId: 'runA',
 			validTime: A.vt,
@@ -32,16 +32,35 @@ describe('displayedAfterCommit', () => {
 			demo: false
 		});
 		for (const r of ['timeout', 'stale', 'unchanged'] as const) {
-			expect(displayedAfterCommit(r, B, shownA)).toBe(shownA);
+			expect(displayedAfterCommit(r, B, shownA, true)).toBe(shownA);
 		}
-		expect(displayedAfterCommit('cleared', B, shownA)).toBeNull();
+		expect(displayedAfterCommit('cleared', B, shownA, false)).toBeNull();
+	});
+});
+
+describe('re-style puis délai dépassé (slot actif disparu)', () => {
+	it('rien n’est plus affiché : l’état affiché est effacé, quel que soit le résultat', () => {
+		const shownA = displayedAfterCommit('shown', A, null, true);
+		// setStyle a purgé le slot de A, puis le rechargement a dépassé le délai.
+		for (const r of ['timeout', 'stale', 'unchanged', 'shown'] as const) {
+			expect(displayedAfterCommit(r, A, shownA, false)).toBeNull();
+		}
+	});
+
+	it('la carte annonce « rien d’affiché » et l’erreur, avec la sélection en attente', () => {
+		const shownA = displayedAfterCommit('shown', A, null, true);
+		const afterRestyleTimeout = displayedAfterCommit('timeout', A, shownA, false);
+		const s = cardSummary(afterRestyleTimeout, { runId: 'runA', validTime: A.vt }, TIMEOUT, NOW);
+		expect(s.shown).toBeUndefined();
+		expect(s.pending).toBe(true);
+		expect(s.error).toBe(TIMEOUT.message);
 	});
 });
 
 describe('cardSummary', () => {
 	it('après sélection de B puis délai dépassé : décrit A (réellement affiché) et montre l’erreur', () => {
-		const shownA = displayedAfterCommit('shown', A, null);
-		const afterTimeout = displayedAfterCommit('timeout', B, shownA);
+		const shownA = displayedAfterCommit('shown', A, null, true);
+		const afterTimeout = displayedAfterCommit('timeout', B, shownA, true);
 		const s = cardSummary(afterTimeout, { runId: 'runB', validTime: B.vt }, TIMEOUT, NOW);
 		expect(s.shown).toMatchObject({ runId: 'runA', lead: '+6 h', utc: '18/10 12:00 UTC' });
 		expect(s.shown!.runId).not.toBe('runB');
@@ -61,7 +80,7 @@ describe('cardSummary', () => {
 	});
 
 	it('affichage à jour : pas d’attente, pas d’erreur', () => {
-		const shownB = displayedAfterCommit('shown', B, null);
+		const shownB = displayedAfterCommit('shown', B, null, true);
 		const s = cardSummary(shownB, { runId: 'runB', validTime: B.vt }, { state: 'ready' }, NOW);
 		expect(s.pending).toBe(false);
 		expect(s.error).toBeUndefined();
@@ -69,7 +88,7 @@ describe('cardSummary', () => {
 	});
 
 	it('signale une échéance affichée déjà écoulée', () => {
-		const shownA = displayedAfterCommit('shown', A, null);
+		const shownA = displayedAfterCommit('shown', A, null, true);
 		const s = cardSummary(
 			shownA,
 			{ runId: 'runA', validTime: A.vt },

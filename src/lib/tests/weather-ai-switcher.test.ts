@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { displayedAfterCommit } from '$lib/weather-ai/displayed';
 import { type SlotAdapter, createLayerSwitcher } from '$lib/weather-ai/layer-switcher';
 import { RunScopedCache, renderKey } from '$lib/weather-ai/render-cache';
+
+import type { LoadedRun } from '$lib/weather-ai/loader';
 
 const deferred = <T>() => {
 	let resolve!: (v: T) => void;
@@ -182,6 +185,36 @@ describe('createLayerSwitcher', () => {
 			m.load('B');
 			expect(await retry).toBe('shown');
 			expect(m.visible()).toEqual(['B']);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('re-style puis délai dépassé : plus de slot actif, l’état affiché est effacé', async () => {
+		vi.useFakeTimers();
+		try {
+			const m = fakeMap();
+			const sw = createLayerSwitcher(m.adapter, { timeoutMs: 1000 });
+			const input = {
+				run: { runId: 'runA', initTime: '2026-10-18T06:00:00Z' } as LoadedRun,
+				vt: '2026-10-18T12:00:00Z'
+			};
+			const a = sw.commit('A', async () => 'A');
+			await vi.advanceTimersByTimeAsync(0);
+			m.load('A');
+			const r1 = await a;
+			let displayed = displayedAfterCommit(r1, input, null, !!sw.activeSlot);
+			expect(displayed?.runId).toBe('runA');
+
+			m.purge(); // setStyle sur la même carte : le slot de A disparaît
+			expect(sw.activeSlot).toBeNull();
+			const reload = sw.commit('A', async () => 'A'); // rechargement qui ne se charge pas
+			await vi.advanceTimersByTimeAsync(1001);
+			const r2 = await reload;
+			expect(r2).toBe('timeout');
+			expect(m.slots.size).toBe(0);
+			displayed = displayedAfterCommit(r2, input, displayed, !!sw.activeSlot);
+			expect(displayed).toBeNull(); // la carte n'annonce plus A
 		} finally {
 			vi.useRealTimers();
 		}

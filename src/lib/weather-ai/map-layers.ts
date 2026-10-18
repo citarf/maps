@@ -511,12 +511,14 @@ export async function syncWeatherAiLayers(): Promise<void> {
 		weatherAiDisplayed.set(null);
 		switcher = createLayerSwitcher(mapAdapter(map));
 	}
-	// Un re-style a purgé les slots : on oublie ceux qui n'existent plus.
+	// Un re-style a purgé les slots : on oublie ceux qui n'existent plus, et la
+	// carte n'affiche plus rien tant que le nouvel état n'est pas commuté.
 	for (const slot of [...mounted.keys()]) {
 		if (!mounted.get(slot)!.parts.some((p) => map.getSource(sourceId(slot, p)))) {
 			mounted.delete(slot);
 		}
 	}
+	if (!switcher!.activeSlot) weatherAiDisplayed.set(null);
 
 	const cones = get(weatherAiCones);
 	const run = get(weatherAiRun);
@@ -535,7 +537,9 @@ export async function syncWeatherAiLayers(): Promise<void> {
 			plan = await preparePlan(input);
 			return plan;
 		});
-		weatherAiDisplayed.set(displayedAfterCommit(result, input, get(weatherAiDisplayed)));
+		weatherAiDisplayed.set(
+			displayedAfterCommit(result, input, get(weatherAiDisplayed), !!switcher!.activeSlot)
+		);
 		if (result === 'timeout') {
 			// Slot incomplet retiré par le commutateur, état précédent conservé.
 			// Le raster de ce plan est libéré (recalculé au prochain essai).

@@ -13,12 +13,18 @@ export interface DisplayedState {
 	demo: boolean;
 }
 
-/** État affiché après un commit : seul un slot réellement montré ou effacé le change. */
+/**
+ * État affiché après un commit : seul un slot réellement montré ou effacé le
+ * change, et il n'y a rien d'affiché dès qu'aucun slot n'existe plus sur la
+ * carte (`hasActiveSlot` faux : re-style, démontage), quel que soit le résultat.
+ */
 export function displayedAfterCommit(
 	result: CommitResult,
 	input: { run: LoadedRun | undefined; vt: string | undefined },
-	prev: DisplayedState | null
+	prev: DisplayedState | null,
+	hasActiveSlot: boolean
 ): DisplayedState | null {
+	if (!hasActiveSlot) return null;
 	if (result === 'shown') {
 		return input.run && input.vt
 			? {
