@@ -76,7 +76,8 @@ export async function refresh(retry = 0): Promise<void> {
 			// Démonstration : run de référence bundlé, aucune requête à l'API.
 			if (!active?.demo) commitRun(await loadDemoRun(ctl.signal));
 			weatherAiStatus.set({ state: 'ready' });
-			void syncCones();
+			refreshCtl = undefined;
+			await ensureEnabledLoaded();
 			return;
 		}
 		const catalog = await fetchCatalog(base, ctl.signal);
@@ -90,7 +91,10 @@ export async function refresh(retry = 0): Promise<void> {
 		if (ctl.signal.aborted) return;
 		commitRun(run);
 		weatherAiStatus.set({ state: 'ready' });
-		void syncCones();
+		// Réconciliation : une couche activée pendant la préparation (ignorée alors
+		// par ensureEnabledLoaded) est chargée maintenant, pour ce même run.
+		refreshCtl = undefined;
+		await ensureEnabledLoaded();
 	} catch (err) {
 		if (isAbort(err)) return;
 		if (err instanceof RunChangedError && retry === 0 && refreshCtl === ctl) {
