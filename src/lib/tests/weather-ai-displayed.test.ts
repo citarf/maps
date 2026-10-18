@@ -98,3 +98,73 @@ describe('cardSummary', () => {
 		expect(s.shown!.elapsed).toBe(true);
 	});
 });
+
+describe('légende : jamais d’affirmation sur une échéance non affichée', () => {
+	const RUN6 = run('runA', '2026-10-18T00:00:00Z');
+	const TIMES = ['2026-10-18T06:00:00Z', '2026-10-18T12:00:00Z', '2026-10-18T18:00:00Z'];
+	const horizon = { first: TIMES[0], last: TIMES[2] };
+
+	it('timeout : affichée 06Z, frise à 15Z résolue à 12Z → pas de « échéance précédente affichée »', () => {
+		const shown06 = displayedAfterCommit('shown', { run: RUN6, vt: TIMES[0] }, null, true);
+		const afterTimeout = displayedAfterCommit(
+			'timeout',
+			{ run: RUN6, vt: TIMES[1] },
+			shown06,
+			true
+		);
+		const s = cardSummary(
+			afterTimeout,
+			{ runId: 'runA', validTime: TIMES[1] },
+			TIMEOUT,
+			NOW,
+			{ validTime: TIMES[1], relation: 'between', horizon },
+			RUN6.initTime
+		);
+		expect(s.relation).toBe('between'); // la sélection, elle, tombe entre deux échéances
+		expect(s.betweenShown).toBe(false); // mais 12Z n'est pas affichée : on ne l'affirme pas
+		expect(s.shown).toMatchObject({ lead: '+6 h', utc: '18/10 06:00 UTC', runId: 'runA' });
+		expect(s.requested).toMatchObject({ lead: '+12 h', utc: '18/10 12:00 UTC', sameRun: true });
+		expect(s.error).toBe(TIMEOUT.message);
+	});
+
+	it('entre deux échéances ET affichée : la phrase est vraie', () => {
+		const shown12 = displayedAfterCommit('shown', { run: RUN6, vt: TIMES[1] }, null, true);
+		const s = cardSummary(
+			shown12,
+			{ runId: 'runA', validTime: TIMES[1] },
+			{ state: 'ready' },
+			NOW,
+			{ validTime: TIMES[1], relation: 'between', horizon },
+			RUN6.initTime
+		);
+		expect(s.betweenShown).toBe(true);
+		expect(s.requested).toBeUndefined();
+	});
+
+	it('changement de run en cours : run et init décrivent le run AFFICHÉ, le nouveau est « demandé »', () => {
+		const oldRun = run('runA', '2026-10-18T00:00:00Z');
+		const newRun = run('runB', '2026-10-18T06:00:00Z');
+		const shownOld = displayedAfterCommit(
+			'shown',
+			{ run: oldRun, vt: '2026-10-18T18:00:00Z' },
+			null,
+			true
+		);
+		// Le nouveau run est committé dans le store, son slot n'est pas encore affiché.
+		const s = cardSummary(
+			shownOld,
+			{ runId: 'runB', validTime: '2026-10-18T18:00:00Z' },
+			{ state: 'ready' },
+			NOW,
+			{ validTime: '2026-10-18T18:00:00Z', relation: 'exact', horizon },
+			newRun.initTime
+		);
+		expect(s.shown).toMatchObject({
+			runId: 'runA',
+			init: '18/10 00:00 UTC',
+			lead: '+18 h'
+		});
+		expect(s.requested).toMatchObject({ runId: 'runB', sameRun: false, lead: '+12 h' });
+		expect(s.pending).toBe(true);
+	});
+});

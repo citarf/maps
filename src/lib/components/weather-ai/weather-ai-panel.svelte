@@ -157,15 +157,31 @@
 		     à ne pas confondre avec le run du modèle de fond. -->
 		<section class="flex flex-col gap-0.5 rounded-xl bg-white/[0.04] px-3 py-2 text-[11px]">
 			<span class="text-white/45">Source des superpositions</span>
-			<span class="font-mono break-all text-white/70">run Weather AI {$weatherAiRun.runId}</span>
 			{#if summary.shown}
+				<!-- Run, init et échéance de l'état AFFICHÉ (weatherAiDisplayed), jamais de la sélection. -->
+				<span class="font-mono break-all text-white/70">run Weather AI {summary.shown.runId}</span>
+				{#if summary.shown.init}
+					<span class="text-white/55 tabular-nums">initialisé le {summary.shown.init}</span>
+				{/if}
 				<span class="text-white/80 tabular-nums"
 					>Échéance affichée : {summary.shown.lead} · {summary.shown.utc}{summary.shown.elapsed
 						? ' (écoulée)'
 						: ''}</span
 				>
+			{:else}
+				<span class="text-white/55">Aucune donnée Weather AI affichée.</span>
 			{/if}
-			{#if summary.relation === 'between' && summary.shown}
+			{#if summary.requested}
+				<span class="text-white/55 tabular-nums"
+					>Échéance demandée {summary.requested.lead} · {summary.requested.utc}{summary.requested
+						.sameRun
+						? ''
+						: ` (run Weather AI ${summary.requested.runId})`} : {summary.error
+						? 'non affichée (échec)'
+						: 'en chargement'}.</span
+				>
+			{/if}
+			{#if summary.betweenShown}
 				<span class="text-sky-200/90"
 					>Heure de la frise entre deux échéances : l'échéance précédente est affichée.</span
 				>
@@ -236,7 +252,7 @@
 				>Run, sources et licence</summary
 			>
 			<dl class="mt-2 grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-[11px] text-white/65">
-				<dt class="text-white/45">Run</dt>
+				<dt class="text-white/45">Dernier run</dt>
 				<dd class="font-mono break-all">{$weatherAiRun.runId}</dd>
 				<dt class="text-white/45">Init.</dt>
 				<dd>{$weatherAiRun.initTime ? formatUtc($weatherAiRun.initTime) : 'inconnue'}</dd>

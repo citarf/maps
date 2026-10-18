@@ -17,9 +17,7 @@
 	import { CONES_MENTION } from '$lib/weather-ai/cones';
 	import { useWeatherAi } from '$lib/weather-ai/controller';
 	import { cardSummary } from '$lib/weather-ai/displayed';
-	import { leadHours } from '$lib/weather-ai/loader';
 	import { syncWeatherAiLayers } from '$lib/weather-ai/map-layers';
-	import { formatLead, formatUtc } from '$lib/weather-ai/render';
 
 	import WeatherAiMentions from './weather-ai-mentions.svelte';
 
@@ -57,9 +55,6 @@
 			$weatherAiFrame,
 			$weatherAiRun?.initTime
 		)
-	);
-	const selectedLead = $derived(
-		$weatherAiTime ? formatLead(leadHours($weatherAiRun?.initTime, $weatherAiTime)) : ''
 	);
 	const outOfHorizon = $derived(summary.relation === 'before' || summary.relation === 'after');
 	const showCones = $derived(
@@ -118,7 +113,7 @@
 			<p class="mt-1 text-[11px] text-white/55">Chargement du run Weather AI…</p>
 		{/if}
 
-		{#if summary.relation === 'between' && summary.shown}
+		{#if summary.betweenShown}
 			<p class="mt-1 text-[11px] leading-snug text-sky-200/90">
 				L'heure de la frise tombe entre deux échéances Weather AI (pas de 6 h) : l'échéance
 				précédente est affichée.
@@ -131,8 +126,13 @@
 			</p>
 		{/if}
 
-		{#if summary.pending && !summary.error && !outOfHorizon && selectedLead}
-			<p class="text-[11px] text-white/55">Chargement de {selectedLead}…</p>
+		{#if summary.requested && !summary.error}
+			<p class="text-[11px] text-white/55 tabular-nums">
+				Chargement de l'échéance demandée {summary.requested.lead} · {summary.requested.utc}{summary
+					.requested.sameRun
+					? ''
+					: ` (nouveau run Weather AI ${summary.requested.runId})`}…
+			</p>
 		{/if}
 
 		<!-- Erreur toujours visible, qu'un état soit affiché ou non (panneau replié compris). -->
@@ -142,7 +142,9 @@
 				role="alert"
 			>
 				{summary.error}{#if summary.shown && summary.pending}
-					Données affichées : {summary.shown.lead} · {summary.shown.utc}.{/if}
+					Données affichées : {summary.shown.lead} · {summary.shown.utc} (run {summary.shown
+						.runId}).{/if}{#if summary.requested}
+					Échéance demandée {summary.requested.lead} · {summary.requested.utc} non affichée.{/if}
 			</p>
 		{/if}
 
@@ -152,11 +154,11 @@
 
 		{#if infoOpen}
 			<div class="mt-2 border-t border-white/10 pt-2">
-				{#if $weatherAiRun}
+				{#if summary.shown}
+					<!-- Initialisation du run AFFICHÉ, pas du run en préparation. -->
 					<p class="mb-1.5 text-[11px] text-white/60 tabular-nums">
-						Run Weather AI initialisé le {$weatherAiRun.initTime
-							? formatUtc($weatherAiRun.initTime)
-							: 'inconnu'}, distinct du run du modèle de fond.
+						Run Weather AI affiché initialisé le {summary.shown.init ?? 'inconnu'}, distinct du run
+						du modèle de fond.
 					</p>
 				{/if}
 				<WeatherAiMentions />

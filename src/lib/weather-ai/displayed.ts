@@ -41,15 +41,33 @@ export function displayedAfterCommit(
 }
 
 export interface CardSummary {
-	/** Échéance et run de l'état affiché, ou rien si la carte ne montre rien. */
-	shown?: { lead: string; utc: string; runId: string; elapsed: boolean; demo: boolean };
+	/**
+	 * État réellement affiché : échéance, run ET initialisation viennent de
+	 * `weatherAiDisplayed`, jamais de la sélection (qui peut être en chargement,
+	 * en échec, ou appartenir à un run en préparation).
+	 */
+	shown?: {
+		lead: string;
+		utc: string;
+		runId: string;
+		init?: string;
+		elapsed: boolean;
+		demo: boolean;
+	};
 	/** La sélection n'est pas (encore) celle affichée. */
 	pending: boolean;
+	/** Échéance demandée par la frise quand elle n'est pas celle affichée. */
+	requested?: { lead: string; utc: string; runId: string; sameRun: boolean };
+	/**
+	 * L'heure de la frise tombe entre deux échéances ET l'échéance précédente
+	 * demandée est bien celle affichée (sinon on ne l'affirme pas).
+	 */
+	betweenShown: boolean;
 	/** Erreur à montrer, qu'un run soit affiché ou non. */
 	error?: string;
-	/** Position de l'heure de la frise par rapport aux échéances Weather AI. */
+	/** Position de l'heure de la frise par rapport aux échéances Weather AI (sélection). */
 	relation: FrameRelation;
-	/** Horizon du run Weather AI, ex. « +6 h à +72 h, 18/10 12:00 → 21/10 06:00 UTC ». */
+	/** Horizon du run Weather AI demandé, ex. « +6 h à +72 h, 18/10 12:00 → 21/10 06:00 UTC ». */
 	horizon?: string;
 }
 
@@ -62,14 +80,16 @@ export function cardSummary(
 	initTime?: string
 ): CardSummary {
 	const h = frame.horizon;
+	const pending =
+		!!selected.validTime &&
+		(displayed?.runId !== selected.runId || displayed?.validTime !== selected.validTime);
 	const summary: CardSummary = {
 		relation: frame.relation,
 		horizon: h
 			? `${formatLead(leadHours(initTime, h.first))} à ${formatLead(leadHours(initTime, h.last))}, ${formatUtc(h.first).replace(' UTC', '')} → ${formatUtc(h.last)}`
 			: undefined,
-		pending:
-			!!selected.validTime &&
-			(displayed?.runId !== selected.runId || displayed?.validTime !== selected.validTime),
+		pending,
+		betweenShown: frame.relation === 'between' && !!displayed && !pending,
 		error: status.state === 'error' ? status.message : undefined
 	};
 	if (displayed) {
@@ -77,8 +97,17 @@ export function cardSummary(
 			lead: formatLead(leadHours(displayed.initTime, displayed.validTime)),
 			utc: formatUtc(displayed.validTime),
 			runId: displayed.runId,
+			init: displayed.initTime ? formatUtc(displayed.initTime) : undefined,
 			elapsed: Date.parse(displayed.validTime) < now,
 			demo: displayed.demo
+		};
+	}
+	if (pending && selected.validTime && selected.runId) {
+		summary.requested = {
+			lead: formatLead(leadHours(initTime, selected.validTime)),
+			utc: formatUtc(selected.validTime),
+			runId: selected.runId,
+			sameRun: displayed?.runId === selected.runId
 		};
 	}
 	return summary;
