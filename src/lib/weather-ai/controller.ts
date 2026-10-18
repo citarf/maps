@@ -6,11 +6,11 @@
 import { get } from 'svelte/store';
 
 import {
+	type WeatherAiOverlay,
 	weatherAiCones,
 	weatherAiLayers,
 	weatherAiRun,
-	weatherAiStatus,
-	weatherAiTime
+	weatherAiStatus
 } from '$lib/stores/weather-ai';
 
 import { getWeatherAiApiUrl, getWeatherAiConesMode } from '$lib/runtime-env';
@@ -22,10 +22,8 @@ import {
 	RunChangedError,
 	extendRun,
 	fetchCatalog,
-	pickValidTime,
 	prepareRun,
-	pruneCache,
-	runValidTimes
+	pruneCache
 } from './loader';
 
 import type { ProductKind } from './products';
@@ -35,7 +33,7 @@ export const CATALOG_POLL_MS = 5 * 60 * 1000;
 const isAbort = (err: unknown) => (err as Error)?.name === 'AbortError';
 
 const enabledKinds = (): ProductKind[] =>
-	(Object.entries(get(weatherAiLayers)) as [ProductKind, boolean][])
+	(Object.entries(get(weatherAiLayers)) as [WeatherAiOverlay, boolean][])
 		.filter(([, on]) => on)
 		.map(([k]) => k);
 
@@ -53,8 +51,8 @@ const errorMessage = (err: unknown) =>
 
 function commitRun(run: LoadedRun) {
 	const prev = get(weatherAiRun);
+	// L'échéance affichée découle de la frise principale (weatherAiFrame).
 	weatherAiRun.set(run);
-	weatherAiTime.set(pickValidTime(runValidTimes(run), get(weatherAiTime), Date.now()));
 	if (prev?.runId !== run.runId) weatherAiCones.set(null);
 	pruneCache([run.runId]);
 }
@@ -210,14 +208,4 @@ export function useWeatherAi(): () => void {
 		extendCtl?.abort();
 		conesCtl?.abort();
 	};
-}
-
-/** Déplace le curseur d'échéance de `delta` pas dans le run affiché. */
-export function stepValidTime(delta: number): void {
-	const run = get(weatherAiRun);
-	if (!run) return;
-	const times = runValidTimes(run);
-	const i = times.indexOf(get(weatherAiTime) ?? '');
-	const next = times[Math.min(Math.max((i < 0 ? 0 : i) + delta, 0), times.length - 1)];
-	if (next) weatherAiTime.set(next);
 }

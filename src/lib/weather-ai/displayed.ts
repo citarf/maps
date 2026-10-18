@@ -4,6 +4,7 @@
 import { type LoadedRun, leadHours } from './loader';
 import { formatLead, formatUtc } from './render';
 
+import type { FrameRelation, ResolvedFrame } from './frame';
 import type { CommitResult } from './layer-switcher';
 
 export interface DisplayedState {
@@ -46,15 +47,26 @@ export interface CardSummary {
 	pending: boolean;
 	/** Erreur à montrer, qu'un run soit affiché ou non. */
 	error?: string;
+	/** Position de l'heure de la frise par rapport aux échéances Weather AI. */
+	relation: FrameRelation;
+	/** Horizon du run Weather AI, ex. « +6 h à +72 h, 18/10 12:00 → 21/10 06:00 UTC ». */
+	horizon?: string;
 }
 
 export function cardSummary(
 	displayed: DisplayedState | null,
 	selected: { runId: string | undefined; validTime: string | undefined },
 	status: { state: string; message?: string },
-	now: number
+	now: number,
+	frame: ResolvedFrame = { relation: 'none' },
+	initTime?: string
 ): CardSummary {
+	const h = frame.horizon;
 	const summary: CardSummary = {
+		relation: frame.relation,
+		horizon: h
+			? `${formatLead(leadHours(initTime, h.first))} à ${formatLead(leadHours(initTime, h.last))}, ${formatUtc(h.first).replace(' UTC', '')} → ${formatUtc(h.last)}`
+			: undefined,
 		pending:
 			!!selected.validTime &&
 			(displayed?.runId !== selected.runId || displayed?.validTime !== selected.validTime),

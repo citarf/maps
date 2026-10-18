@@ -19,7 +19,7 @@ Client SvelteKit qui rend des OMfiles via MapLibre GL — l'intégralité du ren
 - **Wind overlay** — surcouche de vent à 10/80/120/180 m, opacité indépendante de la couche principale.
 - **Deuxième couche scalaire** — superposition de deux variables (ex : température + précipitation) avec opacité réglable.
 - **Diaporama / playback** — animation pré-rendue avec FPS configurable (4–15 fps), capture côté canvas via `preserveDrawingBuffer`.
-- **Cyclones IA (expérimental)** — onglet « Cyclones IA » : pression au niveau de la mer (isobares), probabilité d'existence cyclonique et trajectoires du modèle IA WeatherNext Cyclones Mini (Google DeepMind), servis par l'API Weather AI du portail ; cônes d'incertitude derrière un feature flag. Jamais une alerte officielle (voir `## Architecture`).
+- **Cyclones IA (expérimental)** — onglet « Cyclones IA » : superpositions du modèle IA WeatherNext Cyclones Mini (Google DeepMind) — cyclones, trajectoires, zones à surveiller et cônes d'incertitude (feature flag) — activables sur n'importe quel fond, échéance alignée sur la frise principale, servies par l'API Weather AI du portail. Les champs continus (pression, probabilité d'existence) viendront comme modèle du sélecteur. Jamais une alerte officielle (voir `## Architecture`).
 - **UI 100 % française.**
 
 ### Dépendance forkée

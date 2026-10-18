@@ -2,15 +2,23 @@ import { get } from 'svelte/store';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { weatherAiLayers, weatherAiRun, weatherAiStatus } from '$lib/stores/weather-ai';
+import {
+	weatherAiCones,
+	weatherAiLayers,
+	weatherAiRun,
+	weatherAiStatus
+} from '$lib/stores/weather-ai';
 
 import { getWeatherAiApiUrl } from '$lib/runtime-env';
 import { dataUrl } from '$lib/weather-ai/api';
+import { CONES_PRODUCT_ID } from '$lib/weather-ai/cones';
 import { useWeatherAi } from '$lib/weather-ai/controller';
 import { pruneCache } from '$lib/weather-ai/loader';
 
 import {
+	EXISTENCE_ID,
 	MSLP_ID,
+	RUN_ID,
 	TRACKS_ID,
 	VALID_TIMES,
 	catalog,
@@ -25,9 +33,9 @@ import {
 const BASE = getWeatherAiApiUrl();
 
 /** Faux portail : `gate` retient la réponse de /runs pour figer prepareRun. */
-function stubPortal(gate: Promise<void>) {
+function stubPortal(gate: Promise<void>, productIds = [MSLP_ID, EXISTENCE_ID, TRACKS_ID]) {
 	const routes: Record<string, unknown> = {
-		[`${BASE}/products`]: catalog([MSLP_ID, TRACKS_ID]),
+		[`${BASE}/products`]: catalog(productIds),
 		[`${BASE}/runs`]: runs(),
 		[`${BASE}/products/${MSLP_ID}/timeline`]: timeline(MSLP_ID),
 		[`${BASE}/products/${TRACKS_ID}/timeline`]: timeline(TRACKS_ID),
@@ -58,25 +66,46 @@ const until = async (cond: () => boolean, ms = 2000) => {
 
 afterEach(() => {
 	vi.unstubAllGlobals();
+	vi.unstubAllEnvs();
 	weatherAiRun.set(undefined);
-	weatherAiLayers.set({ mslp: false, existence: false, tracks: false, cones: false });
+	weatherAiCones.set(null);
+	weatherAiLayers.set({ tracks: false, cones: false });
 	pruneCache([]);
 });
 
 describe('controller', () => {
-	it('charge une couche activée pendant la préparation du run, sans attendre le prochain poll', async () => {
+	it('ne charge jamais les champs continus (pression, probabilité) : seules les superpositions', async () => {
+		const calls = stubPortal(Promise.resolve());
+		weatherAiLayers.set({ tracks: true, cones: false });
+		const release = useWeatherAi();
+		try {
+			await until(() => !!get(weatherAiRun)?.loaded[TRACKS_ID]);
+			const run = get(weatherAiRun)!;
+			expect(Object.keys(run.loaded)).toEqual([TRACKS_ID]);
+			expect(calls.some((u) => u.includes(MSLP_ID) || u.includes(EXISTENCE_ID))).toBe(false);
+			// Les produits restent connus (futur modèle du sélecteur), sans être chargés.
+			expect(run.available.map((p) => p.productId)).toContain(MSLP_ID);
+		} finally {
+			release();
+		}
+	});
+
+	it('réconcilie une superposition activée pendant la préparation du run (cônes)', async () => {
+		vi.stubEnv('VITE_WEATHER_AI_CONES', 'on');
 		let open!: () => void;
 		const gate = new Promise<void>((r) => (open = r));
-		const calls = stubPortal(gate);
-		weatherAiLayers.set({ mslp: false, existence: false, tracks: true, cones: false });
+		const calls = stubPortal(gate, [TRACKS_ID, CONES_PRODUCT_ID]);
+		weatherAiLayers.set({ tracks: true, cones: false });
 		const release = useWeatherAi();
 		try {
 			await until(() => calls.includes(`${BASE}/runs`)); // prepareRun en vol
-			weatherAiLayers.update((l) => ({ ...l, mslp: true })); // activée pendant la préparation
+			weatherAiLayers.update((l) => ({ ...l, cones: true })); // activée pendant la préparation
 			open();
-			await until(() => !!get(weatherAiRun)?.loaded[MSLP_ID]);
-			expect(get(weatherAiStatus).state).toBe('ready');
-			expect(calls.filter((u) => u.includes(`${MSLP_ID}/data`))).toHaveLength(VALID_TIMES.length);
+			// Sans la réconciliation, rien ne se passerait avant le prochain relevé (5 min).
+			await until(() => get(weatherAiCones)?.runId === RUN_ID);
+			// La route des cônes n'est pas définie par le portail : refus explicite, pas de cône.
+			expect(get(weatherAiCones)?.doc).toBeNull();
+			expect(get(weatherAiCones)?.message).toMatch(/Route HTTP des cônes/);
 		} finally {
 			release();
 		}
@@ -84,10 +113,10 @@ describe('controller', () => {
 
 	it('garde un échec réseau propre : statut d’erreur explicite, aucun run inventé', async () => {
 		vi.stubGlobal('fetch', async () => {
-			throw new TypeError('Failed to fetch'); // ce que lève un navigateur bloqué par CORS
+			throw new TypeError('Failed to fetch'); // ce que lève un navigateur bloqué (réseau, CORS)
 		});
 		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-		weatherAiLayers.set({ mslp: false, existence: false, tracks: true, cones: false });
+		weatherAiLayers.set({ tracks: true, cones: false });
 		const release = useWeatherAi();
 		try {
 			await until(() => get(weatherAiStatus).state === 'error');

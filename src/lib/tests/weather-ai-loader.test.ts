@@ -5,7 +5,6 @@ import {
 	type FetchJson,
 	RunChangedError,
 	leadHours,
-	pickValidTime,
 	prepareRun,
 	pruneCache,
 	runValidTimes
@@ -231,14 +230,5 @@ describe('échéances', () => {
 	it('leadHours depuis init_time, rien sans init_time', () => {
 		expect(leadHours(INIT_TIME, '2026-10-18T18:00:00Z')).toBe(18);
 		expect(leadHours(undefined, '2026-10-18T18:00:00Z')).toBeUndefined();
-	});
-
-	it('pickValidTime garde l’échéance, sinon la première non écoulée', () => {
-		const now = Date.parse('2026-10-18T10:00:00Z');
-		expect(pickValidTime(VALID_TIMES, VALID_TIMES[2], now)).toBe(VALID_TIMES[2]);
-		expect(pickValidTime(VALID_TIMES, '2026-10-17T00:00:00Z', now)).toBe(VALID_TIMES[1]);
-		expect(pickValidTime(VALID_TIMES, undefined, Date.parse('2026-10-25T00:00:00Z'))).toBe(
-			VALID_TIMES[0]
-		);
 	});
 });

@@ -304,16 +304,3 @@ export function leadHours(initTime: string | undefined, validTime: string): numb
 	if (!initTime) return undefined;
 	return Math.round((Date.parse(validTime) - Date.parse(initTime)) / 3_600_000);
 }
-
-/**
- * Échéance à afficher après une bascule : la même que précédemment si elle
- * existe dans le nouveau run, sinon la première non écoulée, sinon la première.
- */
-export function pickValidTime(
-	times: string[],
-	previous: string | undefined,
-	now: number
-): string | undefined {
-	if (previous && times.includes(previous)) return previous;
-	return times.find((t) => Date.parse(t) >= now) ?? times[0];
-}

@@ -1,9 +1,11 @@
-// Câblage MapLibre des couches Weather AI. Sources dédiées (pattern de
-// `departments-layer.ts`) posées AU-DESSUS de toutes les couches : elles ne
-// passent pas par le protocole `om://` ni par les SlotManager (documents JSON
-// d'une autre API, run et échéances propres). Les grilles sont rasterisées dans
-// un canvas (Web Mercator, nord en haut) puis servies en source `image` ; les
-// isobares, trajectoires et cônes sont des sources `geojson`.
+// Câblage MapLibre des superpositions Weather AI (cyclones, trajectoires, zones
+// à surveiller, cônes). Sources `geojson` dédiées (pattern de
+// `departments-layer.ts`) posées AU-DESSUS de toutes les couches, sur n'importe
+// quel fond : elles ne passent pas par le protocole `om://` (documents JSON
+// d'une autre API, run propre). L'échéance suit la frise principale
+// (`weatherAiTime`, dérivée de `time`). Les champs continus (pression,
+// probabilité) ne sont pas rendus ici : ils viendront comme variables d'un
+// modèle du sélecteur.
 //
 // Affichage atomique : chaque état (run × échéance × couches × cônes × thème)
 // est préparé hors écran puis commuté d'un bloc par `layer-switcher.ts` — un
@@ -28,10 +30,9 @@ import {
 import { CONE_REASON_LABELS, type ConesProduct, coneAt, conesToGeoJson } from './cones';
 import { CATALOG_POLL_MS } from './controller';
 import { displayedAfterCommit } from './displayed';
-import { MERCATOR_IMAGE_COORDINATES, renderMercatorRgba } from './grid';
 import { createLayerSwitcher } from './layer-switcher';
-import { type GridFrame, type LoadedRun, leadHours } from './loader';
-import { formatLead, formatUtc, isobarsGeoJson, probabilityColor } from './render';
+import { type LoadedRun, leadHours } from './loader';
+import { formatLead, formatUtc } from './render';
 import { RunScopedCache, renderKey } from './render-cache';
 import {
 	CANDIDATE_LABEL,
@@ -43,54 +44,21 @@ import {
 
 import type { WeatherAiLayers } from '$lib/stores/weather-ai';
 
-const RASTER_W = 1024;
-const RASTER_H = 1024;
-
 type Fc = GeoJSON.FeatureCollection;
 
 /** Tout ce qu'un slot affiche, préparé avant d'être monté. */
 export interface RenderPlan {
 	dark: boolean;
-	rasterUrl?: string;
-	/** Clé de cache du raster, pour le libérer si le slot ne se charge pas. */
-	rasterKey?: string;
-	isobars?: Fc;
 	trackLines?: Fc;
 	trackPoints?: Fc;
 	cones?: Fc;
 	coneCentres?: Fc;
 }
 
-// Rendus coûteux mémoïsés pour le run affiché (données immuables) ; une
-// rasterisation terminée après une bascule de run est refusée et libérée.
-const rasters = new RunScopedCache<string>((url) => URL.revokeObjectURL(url));
-const isobars = new RunScopedCache<Fc>();
+// Rendus mémoïsés pour le run affiché (données immuables) ; un rendu terminé
+// après une bascule de run est refusé.
 const tracksCache = new RunScopedCache<ReturnType<typeof buildTracks>>();
 const conesCache = new RunScopedCache<ReturnType<typeof conesToGeoJson>>();
-
-const gridFrame = (
-	run: LoadedRun,
-	kind: 'mslp' | 'existence',
-	vt: string
-): { productId: string; frame: GridFrame } | undefined => {
-	const p = Object.values(run.loaded).find((l) => l.kind === kind);
-	if (!p || p.kind === 'tracks') return undefined;
-	const frame = p.frames.find((f) => f.validTime === vt);
-	return frame && { productId: p.product.productId, frame };
-};
-
-async function rasterize(frame: GridFrame): Promise<string> {
-	const rgba = renderMercatorRgba(frame.grid, RASTER_W, RASTER_H, probabilityColor);
-	const canvas = document.createElement('canvas');
-	canvas.width = RASTER_W;
-	canvas.height = RASTER_H;
-	canvas
-		.getContext('2d')!
-		.putImageData(new ImageData(new Uint8ClampedArray(rgba), RASTER_W, RASTER_H), 0, 0);
-	const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, 'image/png'));
-	if (!blob) throw new Error('rasterisation impossible');
-	return URL.createObjectURL(blob);
-}
 
 interface PlanInput {
 	run: LoadedRun | undefined;
@@ -128,40 +96,6 @@ async function preparePlan({
 	const runId = run.runId;
 	const plan: RenderPlan = { dark };
 
-	if (layers.mslp) {
-		const g = gridFrame(run, 'mslp', vt);
-		if (g) {
-			const gen = isobars.scope(runId);
-			const key = renderKey(runId, g.productId, vt);
-			let fc = isobars.get(key);
-			if (!fc) {
-				fc = isobarsGeoJson(g.frame.grid);
-				isobars.set(gen, key, fc);
-			}
-			plan.isobars = fc;
-		}
-	}
-
-	if (layers.existence) {
-		const g = gridFrame(run, 'existence', vt);
-		if (g) {
-			const gen = rasters.scope(runId);
-			const key = renderKey(runId, g.productId, vt);
-			let url = rasters.get(key);
-			if (!url) {
-				try {
-					const fresh = await rasterize(g.frame);
-					// Refusé (et libéré) si le run a basculé pendant la rasterisation.
-					if (rasters.set(gen, key, fresh)) url = fresh;
-				} catch (err) {
-					console.warn('[weather-ai] raster failed', err);
-				}
-			}
-			plan.rasterUrl = url;
-			if (url) plan.rasterKey = key;
-		}
-	}
-
 	const tracksProduct = Object.values(run.loaded).find((p) => p.kind === 'tracks');
 	if (layers.tracks && tracksProduct?.kind === 'tracks') {
 		const gen = tracksCache.scope(runId);
@@ -192,14 +126,13 @@ async function preparePlan({
 		plan.coneCentres = geo.centres;
 	}
 
-	const empty =
-		!plan.rasterUrl && !plan.isobars && !plan.trackLines && !plan.cones && !plan.coneCentres;
+	const empty = !plan.trackLines && !plan.cones && !plan.coneCentres;
 	return empty ? null : plan;
 }
 
 // ---- Montage d'un slot -----------------------------------------------------
 
-type Part = 'raster' | 'isobars' | 'trackLines' | 'trackPoints' | 'cones' | 'coneCentres';
+type Part = 'trackLines' | 'trackPoints' | 'cones' | 'coneCentres';
 
 interface LayerDef {
 	id: string;
@@ -214,17 +147,6 @@ const halo = (dark: boolean) => (dark ? 'rgba(15,23,42,0.85)' : 'rgba(255,255,25
 
 /** Couches d'un slot, dans l'ordre d'empilement (premier = dessous). */
 const LAYER_DEFS: LayerDef[] = [
-	{
-		id: 'existence',
-		part: 'raster',
-		spec: (source) => ({
-			id: '',
-			type: 'raster',
-			source,
-			paint: { 'raster-resampling': 'linear', 'raster-fade-duration': 0 }
-		}),
-		opacity: () => ({ 'raster-opacity': 1 })
-	},
 	{
 		id: 'cones90',
 		part: 'cones',
@@ -270,36 +192,6 @@ const LAYER_DEFS: LayerDef[] = [
 			paint: { 'circle-radius': 3, 'circle-color': ink(dark) }
 		}),
 		opacity: () => ({ 'circle-opacity': 0.5 })
-	},
-	{
-		id: 'isobars',
-		part: 'isobars',
-		spec: (source, dark) => ({
-			id: '',
-			type: 'line',
-			source,
-			layout: { 'line-join': 'round' },
-			paint: { 'line-color': ink(dark), 'line-width': ['case', ['get', 'major'], 1.4, 0.7] }
-		}),
-		opacity: () => ({ 'line-opacity': 0.75 })
-	},
-	{
-		id: 'isobarLabels',
-		part: 'isobars',
-		spec: (source, dark) => ({
-			id: '',
-			type: 'symbol',
-			source,
-			layout: {
-				'symbol-placement': 'line',
-				'symbol-spacing': 320,
-				'text-field': ['to-string', ['get', 'hpa']],
-				'text-font': ['Noto Sans Regular'],
-				'text-size': 10
-			},
-			paint: { 'text-color': ink(dark), 'text-halo-color': halo(dark), 'text-halo-width': 1.2 }
-		}),
-		opacity: () => ({ 'text-opacity': 1 })
 	},
 	// Candidats de cyclogenèse : rendu distinct (pointillés, halo), jamais coloré par le vent.
 	{
@@ -389,10 +281,8 @@ const sourceId = (slot: string, part: Part) => `weatherAi_${part}_${slot}`;
 const layerId = (slot: string, def: string) => `weatherAi_${def}_${slot}`;
 
 /** Parties présentes dans un plan, et donnée de chacune. */
-function planParts(plan: RenderPlan): Partial<Record<Part, Fc | string>> {
+function planParts(plan: RenderPlan): Partial<Record<Part, Fc>> {
 	return {
-		raster: plan.rasterUrl,
-		isobars: plan.isobars,
 		trackLines: plan.trackLines,
 		trackPoints: plan.trackPoints,
 		cones: plan.cones,
@@ -408,15 +298,10 @@ function mapAdapter(map: maplibregl.Map) {
 		mount(slot: string, plan: RenderPlan) {
 			const entries = Object.entries(planParts(plan)).filter(([, v]) => v !== undefined) as [
 				Part,
-				Fc | string
+				Fc
 			][];
 			for (const [part, data] of entries) {
-				map.addSource(
-					sourceId(slot, part),
-					part === 'raster'
-						? { type: 'image', url: data as string, coordinates: MERCATOR_IMAGE_COORDINATES }
-						: { type: 'geojson', data: data as Fc }
-				);
+				map.addSource(sourceId(slot, part), { type: 'geojson', data });
 			}
 			const parts = entries.map(([p]) => p);
 			for (const def of LAYER_DEFS) {
@@ -531,20 +416,13 @@ export async function syncWeatherAiLayers(): Promise<void> {
 	};
 	clearTimeout(retryTimer);
 	retryTimer = undefined;
-	let plan: RenderPlan | null = null;
 	try {
-		const result = await switcher!.commit(planSignature(input), async () => {
-			plan = await preparePlan(input);
-			return plan;
-		});
+		const result = await switcher!.commit(planSignature(input), () => preparePlan(input));
 		weatherAiDisplayed.set(
 			displayedAfterCommit(result, input, get(weatherAiDisplayed), !!switcher!.activeSlot)
 		);
 		if (result === 'timeout') {
 			// Slot incomplet retiré par le commutateur, état précédent conservé.
-			// Le raster de ce plan est libéré (recalculé au prochain essai).
-			const key = (plan as RenderPlan | null)?.rasterKey;
-			if (key) rasters.delete(key);
 			console.warn('[weather-ai] render timeout, previous state kept');
 			weatherAiStatus.set({ state: 'error', message: RENDER_TIMEOUT_MESSAGE });
 			retryTimer = setTimeout(() => void syncWeatherAiLayers(), CATALOG_POLL_MS);

@@ -1,13 +1,12 @@
 <script lang="ts">
-	import ChevronLeftIcon from '@lucide/svelte/icons/chevron-left';
-	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
 	import ConeIcon from '@lucide/svelte/icons/cone';
-	import GaugeIcon from '@lucide/svelte/icons/gauge';
 	import RouteIcon from '@lucide/svelte/icons/route';
-	import TornadoIcon from '@lucide/svelte/icons/tornado';
 
 	import {
+		type WeatherAiOverlay,
 		weatherAiCones,
+		weatherAiDisplayed,
+		weatherAiFrame,
 		weatherAiLayers,
 		weatherAiRun,
 		weatherAiStatus,
@@ -17,43 +16,52 @@
 	import LayerToggle from '$lib/components/chrome/layer-toggle.svelte';
 
 	import { CONES_MENTION } from '$lib/weather-ai/cones';
-	import { conesOffered, stepValidTime, useWeatherAi } from '$lib/weather-ai/controller';
-	import { leadHours, runValidTimes } from '$lib/weather-ai/loader';
-	import { PROBABILITY_STOPS, formatLead, formatUtc } from '$lib/weather-ai/render';
+	import { conesOffered, useWeatherAi } from '$lib/weather-ai/controller';
+	import { cardSummary } from '$lib/weather-ai/displayed';
+	import { formatUtc } from '$lib/weather-ai/render';
 	import { WIND_CLASSES, buildTracks, msToKmh } from '$lib/weather-ai/tracks';
 
 	import WeatherAiMentions from './weather-ai-mentions.svelte';
 
-	import type { ProductKind } from '$lib/weather-ai/products';
 	import type { Component } from 'svelte';
 
 	// L'onglet monté suffit à lire le catalogue (le menu en dépend).
 	$effect(() => useWeatherAi());
 
-	const ICONS: Record<ProductKind, Component> = {
-		mslp: GaugeIcon,
-		existence: TornadoIcon,
+	const ICONS: Record<WeatherAiOverlay, Component> = {
 		tracks: RouteIcon,
 		cones: ConeIcon
 	};
 
-	// Menu issu du catalogue : seuls les produits annoncés et connus sont proposés.
+	// Superpositions issues du catalogue : seuls les produits annoncés et connus
+	// sont proposés. Les champs continus (pression, probabilité d'existence) n'en
+	// sont pas : ils viendront comme variables d'un modèle du sélecteur.
 	const offered = $derived.by(() => {
 		const run = $weatherAiRun;
 		if (!run) return [];
-		const items = run.available
-			.filter((p) => p.spec.kind !== 'cones')
-			.map((p) => ({ kind: p.spec.kind, label: p.spec.label }));
+		const items: { kind: WeatherAiOverlay; label: string }[] = run.available
+			.filter((p) => p.spec.kind === 'tracks')
+			.map(() => ({ kind: 'tracks', label: 'Cyclones, trajectoires et zones à surveiller' }));
 		if (conesOffered(run)) items.push({ kind: 'cones', label: "Cônes d'incertitude" });
 		return items;
 	});
-
-	const times = $derived($weatherAiRun ? runValidTimes($weatherAiRun) : []);
-	const index = $derived(times.indexOf($weatherAiTime ?? ''));
-	const lead = $derived(
-		$weatherAiTime ? leadHours($weatherAiRun?.initTime, $weatherAiTime) : undefined
+	const continuousFields = $derived(
+		($weatherAiRun?.available ?? []).filter(
+			(p) => p.spec.kind === 'mslp' || p.spec.kind === 'existence'
+		)
 	);
-	const elapsed = $derived($weatherAiTime ? Date.parse($weatherAiTime) < Date.now() : false);
+
+	// Échéance réellement affichée (suit la frise principale), pour la légende.
+	const summary = $derived(
+		cardSummary(
+			$weatherAiDisplayed,
+			{ runId: $weatherAiRun?.runId, validTime: $weatherAiTime },
+			$weatherAiStatus,
+			Date.now(),
+			$weatherAiFrame,
+			$weatherAiRun?.initTime
+		)
+	);
 
 	const storms = $derived.by(() => {
 		const run = $weatherAiRun;
@@ -72,14 +80,9 @@
 		return { declared, candidates };
 	});
 
-	function toggle(kind: ProductKind, next: boolean) {
+	function toggle(kind: WeatherAiOverlay, next: boolean) {
 		weatherAiLayers.update((l) => ({ ...l, [kind]: next }));
 	}
-
-	const rgba = (c: number[]) => `rgba(${c[0]},${c[1]},${c[2]},${(c[3] / 255).toFixed(2)})`;
-	const probabilityGradient = `linear-gradient(to right, ${PROBABILITY_STOPS.map(
-		(s) => `${rgba(s.color)} ${s.value * 100}%`
-	).join(', ')})`;
 </script>
 
 {#snippet group(title: string, body: import('svelte').Snippet)}
@@ -139,68 +142,43 @@
 				</LayerToggle>
 			{/each}
 		{/snippet}
-		{@render group('Couches', layersBody)}
+		{@render group('Superpositions', layersBody)}
+		<p class="-mt-2 px-1 text-[11px] leading-snug text-white/45">
+			Affichables sur n'importe quel modèle de fond. L'échéance suit la frise en bas de l'écran (pas
+			de 6 h depuis l'initialisation du run Weather AI).
+		</p>
+		{#if continuousFields.length}
+			<p class="px-1 text-[11px] leading-snug text-white/45">
+				Pression et probabilité d'existence cyclonique : à venir comme variables d'un modèle «
+				Weather AI » du sélecteur de modèles, avec légende et échelle standards.
+			</p>
+		{/if}
+		<!-- Source des superpositions : run Weather AI et échéance réellement affichée,
+		     à ne pas confondre avec le run du modèle de fond. -->
+		<section class="flex flex-col gap-0.5 rounded-xl bg-white/[0.04] px-3 py-2 text-[11px]">
+			<span class="text-white/45">Source des superpositions</span>
+			<span class="font-mono break-all text-white/70">run Weather AI {$weatherAiRun.runId}</span>
+			{#if summary.shown}
+				<span class="text-white/80 tabular-nums"
+					>Échéance affichée : {summary.shown.lead} · {summary.shown.utc}{summary.shown.elapsed
+						? ' (écoulée)'
+						: ''}</span
+				>
+			{/if}
+			{#if summary.relation === 'between' && summary.shown}
+				<span class="text-sky-200/90"
+					>Heure de la frise entre deux échéances : l'échéance précédente est affichée.</span
+				>
+			{:else if summary.relation === 'before' || summary.relation === 'after'}
+				<span class="text-sky-200/90"
+					>Heure de la frise hors horizon{summary.horizon ? ` (${summary.horizon})` : ''} : rien d'affiché.</span
+				>
+			{/if}
+		</section>
+
 		{#if $weatherAiRun.ignored.length}
 			<p class="-mt-2 px-1 text-[11px] text-white/40">
 				{$weatherAiRun.ignored.length} produit(s) du catalogue pas encore pris en charge.
-			</p>
-		{/if}
-
-		{#snippet timeBody()}
-			<div class="flex flex-col gap-2 px-3 py-2.5">
-				<div class="flex items-center gap-2">
-					<button
-						type="button"
-						class="inline-flex size-8 cursor-pointer items-center justify-center rounded-md text-white/70 hover:bg-white/10 hover:text-white disabled:opacity-30"
-						onclick={() => stepValidTime(-1)}
-						disabled={index <= 0}
-						aria-label="Échéance précédente"><ChevronLeftIcon class="size-4" /></button
-					>
-					<div class="min-w-0 flex-1 text-center tabular-nums">
-						<div class="text-sm font-semibold">{formatLead(lead)}</div>
-						<div class="text-[11px] text-white/60">
-							{$weatherAiTime ? formatUtc($weatherAiTime) : ''}
-						</div>
-					</div>
-					<button
-						type="button"
-						class="inline-flex size-8 cursor-pointer items-center justify-center rounded-md text-white/70 hover:bg-white/10 hover:text-white disabled:opacity-30"
-						onclick={() => stepValidTime(1)}
-						disabled={index >= times.length - 1}
-						aria-label="Échéance suivante"><ChevronRightIcon class="size-4" /></button
-					>
-				</div>
-				<input
-					type="range"
-					min="0"
-					max={Math.max(times.length - 1, 0)}
-					value={Math.max(index, 0)}
-					oninput={(e) => weatherAiTime.set(times[Number(e.currentTarget.value)])}
-					class="w-full accent-sky-400"
-					aria-label="Échéance"
-				/>
-				{#if elapsed}
-					<p class="text-[11px] text-amber-200/80">
-						Échéance écoulée : raccord avec l'analyse, pas une prévision.
-					</p>
-				{/if}
-			</div>
-		{/snippet}
-		{@render group('Échéance', timeBody)}
-
-		{#if $weatherAiLayers.existence}
-			<section class="flex flex-col gap-1 px-1">
-				<h3 class="text-xs font-semibold text-white/80">Probabilité d'existence cyclonique</h3>
-				<div class="h-2.5 rounded-sm" style="background: {probabilityGradient}"></div>
-				<div class="flex justify-between text-[10px] text-white/50 tabular-nums">
-					<span>0,05</span><span>0,5</span><span>1</span>
-				</div>
-			</section>
-		{/if}
-
-		{#if $weatherAiLayers.mslp}
-			<p class="px-1 text-[11px] text-white/55">
-				Isobares tous les 4 hPa (trait renforcé tous les 20 hPa).
 			</p>
 		{/if}
 

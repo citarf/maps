@@ -1,45 +1,64 @@
-// État des couches Weather AI (cartes expérimentales cyclones, onglet « Cyclones IA »).
-// Seules les bascules de couches sont persistées ; le run, l'échéance et le
-// statut se rechargent depuis l'API (données immuables par run, catalogue relu).
-import { writable } from 'svelte/store';
+// État des superpositions Weather AI (onglet « Cyclones IA ») : cyclones,
+// trajectoires, zones à surveiller et cônes, activables sur n'importe quel fond.
+// Les champs continus (pression, probabilité d'existence…) ne sont PAS des
+// superpositions : ils viendront comme variables d'un modèle du sélecteur.
+// Seules les bascules sont persistées ; le run et le statut se rechargent depuis
+// l'API ; l'échéance découle de la frise principale (store `time`).
+import { derived, writable } from 'svelte/store';
 
 import { persisted } from 'svelte-persisted-store';
 
+import { resolveFrame } from '$lib/weather-ai/frame';
+import { type LoadedRun, runValidTimes } from '$lib/weather-ai/loader';
+
+import { time } from './time';
+
 import type { ConesProduct } from '$lib/weather-ai/cones';
 import type { DisplayedState } from '$lib/weather-ai/displayed';
-import type { LoadedRun } from '$lib/weather-ai/loader';
-import type { ProductKind } from '$lib/weather-ai/products';
 
-export type WeatherAiLayers = Record<ProductKind, boolean>;
+/** Superpositions proposées (les clés `mslp`/`existence` d'anciennes versions sont ignorées). */
+export type WeatherAiOverlay = 'tracks' | 'cones';
+export type WeatherAiLayers = Record<WeatherAiOverlay, boolean>;
 
 export const DEFAULT_WEATHER_AI_LAYERS: WeatherAiLayers = {
-	mslp: false,
-	existence: false,
 	tracks: false,
 	cones: false
 };
 
+/**
+ * Forme tolérante des bascules persistées : clé manquante → défaut, valeur non
+ * booléenne ignorée, clés inconnues (dont `mslp`/`existence`, superpositions de
+ * champs continus des premières versions) écartées.
+ */
+export const normalizeWeatherAiLayers = (v: unknown): WeatherAiLayers => ({
+	...DEFAULT_WEATHER_AI_LAYERS,
+	...Object.fromEntries(
+		Object.entries((v ?? {}) as Record<string, unknown>).filter(
+			([k, b]) => k in DEFAULT_WEATHER_AI_LAYERS && typeof b === 'boolean'
+		)
+	)
+});
+
 export const weatherAiLayers = persisted<WeatherAiLayers>(
 	'weather-ai-layers',
 	DEFAULT_WEATHER_AI_LAYERS,
-	{
-		// Forme tolérante : clé manquante → défaut, valeur non booléenne → false.
-		beforeRead: (v) => ({
-			...DEFAULT_WEATHER_AI_LAYERS,
-			...Object.fromEntries(
-				Object.entries(v ?? {}).filter(
-					([k, b]) => k in DEFAULT_WEATHER_AI_LAYERS && typeof b === 'boolean'
-				)
-			)
-		})
-	}
+	{ beforeRead: normalizeWeatherAiLayers }
 );
 
 /** Run affiché. Remplacé d'un bloc (bascule atomique), jamais complété avec un autre run. */
 export const weatherAiRun = writable<LoadedRun | undefined>(undefined);
 
-/** Échéance affichée (`valid_time` ISO UTC du run affiché). */
-export const weatherAiTime = writable<string | undefined>(undefined);
+/**
+ * Échéance Weather AI correspondant à l'heure de la frise principale : la plus
+ * proche inférieure ou égale, avec sa relation (exacte, entre deux échéances,
+ * hors horizon).
+ */
+export const weatherAiFrame = derived([time, weatherAiRun], ([$time, $run]) =>
+	resolveFrame($run ? runValidTimes($run) : [], $time)
+);
+
+/** Échéance demandée (`valid_time` ISO UTC du run), absente hors horizon. */
+export const weatherAiTime = derived(weatherAiFrame, ($f) => $f.validTime);
 
 export interface WeatherAiStatus {
 	state: 'idle' | 'loading' | 'ready' | 'error';
