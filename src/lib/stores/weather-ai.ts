@@ -6,6 +6,7 @@ import { writable } from 'svelte/store';
 import { persisted } from 'svelte-persisted-store';
 
 import type { ConesProduct } from '$lib/weather-ai/cones';
+import type { DisplayedState } from '$lib/weather-ai/displayed';
 import type { LoadedRun } from '$lib/weather-ai/loader';
 import type { ProductKind } from '$lib/weather-ai/products';
 
@@ -53,3 +54,10 @@ export const weatherAiCones = writable<{
 	doc: ConesProduct | null;
 	message?: string;
 } | null>(null);
+
+/**
+ * État réellement affiché sur la carte (mis à jour seulement quand un slot est
+ * montré ou effacé) : les mentions de la carte flottante en découlent, pas de la
+ * sélection, qui peut ne pas être affichée (chargement, délai dépassé).
+ */
+export const weatherAiDisplayed = writable<DisplayedState | null>(null);

@@ -18,6 +18,7 @@ import { basemapTheme } from '$lib/stores/basemap-theme';
 import { map as mStore } from '$lib/stores/map';
 import {
 	weatherAiCones,
+	weatherAiDisplayed,
 	weatherAiLayers,
 	weatherAiRun,
 	weatherAiStatus,
@@ -26,6 +27,7 @@ import {
 
 import { CONE_REASON_LABELS, type ConesProduct, coneAt, conesToGeoJson } from './cones';
 import { CATALOG_POLL_MS } from './controller';
+import { displayedAfterCommit } from './displayed';
 import { MERCATOR_IMAGE_COORDINATES, renderMercatorRgba } from './grid';
 import { createLayerSwitcher } from './layer-switcher';
 import { type GridFrame, type LoadedRun, leadHours } from './loader';
@@ -506,6 +508,7 @@ export async function syncWeatherAiLayers(): Promise<void> {
 	if (switcherMap !== map) {
 		switcherMap = map;
 		mounted.clear();
+		weatherAiDisplayed.set(null);
 		switcher = createLayerSwitcher(mapAdapter(map));
 	}
 	// Un re-style a purgé les slots : on oublie ceux qui n'existent plus.
@@ -532,6 +535,7 @@ export async function syncWeatherAiLayers(): Promise<void> {
 			plan = await preparePlan(input);
 			return plan;
 		});
+		weatherAiDisplayed.set(displayedAfterCommit(result, input, get(weatherAiDisplayed)));
 		if (result === 'timeout') {
 			// Slot incomplet retiré par le commutateur, état précédent conservé.
 			// Le raster de ce plan est libéré (recalculé au prochain essai).

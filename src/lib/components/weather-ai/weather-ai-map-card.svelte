@@ -8,6 +8,7 @@
 	import { desktop, sidebarWidth } from '$lib/stores/preferences';
 	import {
 		weatherAiCones,
+		weatherAiDisplayed,
 		weatherAiLayers,
 		weatherAiRun,
 		weatherAiStatus,
@@ -16,9 +17,10 @@
 
 	import { CONES_MENTION } from '$lib/weather-ai/cones';
 	import { stepValidTime, useWeatherAi } from '$lib/weather-ai/controller';
+	import { cardSummary } from '$lib/weather-ai/displayed';
 	import { leadHours, runValidTimes } from '$lib/weather-ai/loader';
 	import { syncWeatherAiLayers } from '$lib/weather-ai/map-layers';
-	import { formatLead, formatUtc } from '$lib/weather-ai/render';
+	import { formatLead } from '$lib/weather-ai/render';
 
 	import WeatherAiMentions from './weather-ai-mentions.svelte';
 
@@ -48,14 +50,23 @@
 	let infoOpen = $state(false);
 	const times = $derived($weatherAiRun ? runValidTimes($weatherAiRun) : []);
 	const index = $derived(times.indexOf($weatherAiTime ?? ''));
-	const lead = $derived(
-		$weatherAiTime ? leadHours($weatherAiRun?.initTime, $weatherAiTime) : undefined
+	// Les mentions décrivent ce que la carte montre RÉELLEMENT (état affiché),
+	// pas la sélection, qui peut être en chargement ou avoir échoué (délai dépassé).
+	const summary = $derived(
+		cardSummary(
+			$weatherAiDisplayed,
+			{ runId: $weatherAiRun?.runId, validTime: $weatherAiTime },
+			$weatherAiStatus,
+			Date.now()
+		)
 	);
-	const elapsed = $derived($weatherAiTime ? Date.parse($weatherAiTime) < Date.now() : false);
+	const selectedLead = $derived(
+		$weatherAiTime ? formatLead(leadHours($weatherAiRun?.initTime, $weatherAiTime)) : ''
+	);
 	const showCones = $derived(
 		$weatherAiLayers.cones &&
 			!!$weatherAiCones?.doc &&
-			$weatherAiCones.runId === $weatherAiRun?.runId
+			$weatherAiCones.runId === $weatherAiDisplayed?.runId
 	);
 </script>
 
@@ -84,7 +95,7 @@
 			Prévision expérimentale — ne remplace aucune alerte, vigilance ou bulletin officiel.
 		</p>
 
-		{#if $weatherAiRun?.demo}
+		{#if summary.shown?.demo}
 			<p
 				class="mt-1 rounded bg-violet-400/20 px-2 py-1 text-[11px] leading-snug text-violet-100"
 				role="note"
@@ -93,7 +104,7 @@
 				fictifs construits d'après le schéma. Pas une prévision en cours.
 			</p>
 		{/if}
-		{#if $weatherAiRun && $weatherAiTime}
+		{#if summary.shown || $weatherAiTime}
 			<div class="mt-1.5 flex items-center gap-1">
 				<button
 					type="button"
@@ -103,9 +114,13 @@
 					aria-label="Échéance précédente"><ChevronLeftIcon class="size-4" /></button
 				>
 				<div class="min-w-0 flex-1 text-center text-xs tabular-nums">
-					<span class="font-semibold">{formatLead(lead)}</span>
-					<span class="text-white/70">· {formatUtc($weatherAiTime)}</span>
-					{#if elapsed}<span class="text-amber-200/80"> · écoulée</span>{/if}
+					{#if summary.shown}
+						<span class="font-semibold">{summary.shown.lead}</span>
+						<span class="text-white/70">· {summary.shown.utc}</span>
+						{#if summary.shown.elapsed}<span class="text-amber-200/80"> · écoulée</span>{/if}
+					{:else}
+						<span class="text-white/55">Aucune donnée affichée</span>
+					{/if}
 				</div>
 				<button
 					type="button"
@@ -115,13 +130,27 @@
 					aria-label="Échéance suivante"><ChevronRightIcon class="size-4" /></button
 				>
 			</div>
-			<p class="truncate font-mono text-[10px] text-white/45" title={$weatherAiRun.runId}>
-				run {$weatherAiRun.runId}
-			</p>
-		{:else if $weatherAiStatus.state === 'error'}
-			<p class="mt-1 text-[11px] text-red-200">{$weatherAiStatus.message}</p>
-		{:else}
+			{#if summary.shown}
+				<p class="truncate font-mono text-[10px] text-white/45" title={summary.shown.runId}>
+					run {summary.shown.runId}
+				</p>
+			{/if}
+			{#if summary.pending && !summary.error}
+				<p class="text-[11px] text-white/55">Chargement de {selectedLead || 'la sélection'}…</p>
+			{/if}
+		{:else if !summary.error}
 			<p class="mt-1 text-[11px] text-white/55">Chargement du run…</p>
+		{/if}
+
+		<!-- Erreur toujours visible, qu'un état soit affiché ou non (panneau replié compris). -->
+		{#if summary.error}
+			<p
+				class="mt-1 rounded bg-red-500/15 px-2 py-1 text-[11px] leading-snug text-red-200"
+				role="alert"
+			>
+				{summary.error}{#if summary.shown && summary.pending}
+					Données affichées : {summary.shown.lead} · {summary.shown.utc}.{/if}
+			</p>
 		{/if}
 
 		{#if showCones}
