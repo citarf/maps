@@ -59,9 +59,10 @@ export function getForecastApiUrl(): string {
 
 /**
  * Base de l'API Weather AI du portail (cartes expérimentales WeatherNext Cyclones
- * Mini). Défaut : le portail public. En dev, `VITE_WEATHER_AI_API_URL=/api/weather-ai`
- * passe par le proxy Vite (`vite.config.ts`) tant que le portail ne renvoie pas
- * d'en-tête CORS. La barre oblique finale est retirée (l'appelant ajoute `/products`…).
+ * Mini). Défaut : le portail public, appelé en direct (il renvoie l'en-tête CORS).
+ * `VITE_WEATHER_AI_API_URL=/api/weather-ai` passe optionnellement par le proxy du
+ * dev/preview server (`vite.config.ts`). La barre oblique finale est retirée
+ * (l'appelant ajoute `/products`…).
  */
 export function getWeatherAiApiUrl(): string {
 	const fallback = 'https://portail.chom.engineering/api/weather-ai';

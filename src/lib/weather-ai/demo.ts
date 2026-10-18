@@ -1,7 +1,7 @@
 // Démonstration hors API (mode `fixture` du flag des cônes) : trajectoires
 // réelles archivées du run de référence et cônes fictifs construits d'après le
 // schéma, du MÊME run — jamais combinés à un run servi par l'API. Sert à juger
-// le rendu des cônes tant que le portail ne les sert pas (ni le CORS).
+// le rendu des cônes tant que le portail ne les sert pas.
 // Les fixtures sont importées dynamiquement : hors du bundle principal.
 import { validateTracks } from './loader';
 import { PRODUCT_SPECS } from './products';
