@@ -116,6 +116,16 @@
 		<p class="px-1 text-xs text-white/55">Chargement du catalogue…</p>
 	{/if}
 
+	{#if $weatherAiRun?.demo}
+		<p
+			class="rounded-lg border border-violet-300/40 bg-violet-400/15 px-3 py-2 text-xs text-violet-100"
+			role="note"
+		>
+			Démonstration hors API : trajectoires archivées du run de référence (18/10/2026 00Z), cônes
+			fictifs construits d'après le schéma. Pas une prévision en cours.
+		</p>
+	{/if}
+
 	{#if $weatherAiRun}
 		{#snippet layersBody()}
 			{#each offered as item (item.kind)}

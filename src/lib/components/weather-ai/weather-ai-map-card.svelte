@@ -84,6 +84,15 @@
 			Prévision expérimentale — ne remplace aucune alerte, vigilance ou bulletin officiel.
 		</p>
 
+		{#if $weatherAiRun?.demo}
+			<p
+				class="mt-1 rounded bg-violet-400/20 px-2 py-1 text-[11px] leading-snug text-violet-100"
+				role="note"
+			>
+				Démonstration hors API : trajectoires archivées du run de référence (18/10/2026 00Z), cônes
+				fictifs construits d'après le schéma. Pas une prévision en cours.
+			</p>
+		{/if}
 		{#if $weatherAiRun && $weatherAiTime}
 			<div class="mt-1.5 flex items-center gap-1">
 				<button

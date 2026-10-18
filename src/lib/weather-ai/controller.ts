@@ -16,6 +16,7 @@ import {
 import { getWeatherAiApiUrl, getWeatherAiConesMode } from '$lib/runtime-env';
 
 import { CONES_PRODUCT_ID, loadConesDocument, validateCones } from './cones';
+import { loadDemoRun } from './demo';
 import {
 	type LoadedRun,
 	RunChangedError,
@@ -71,6 +72,13 @@ export async function refresh(retry = 0): Promise<void> {
 	const active = get(weatherAiRun);
 	weatherAiStatus.set({ state: 'loading' });
 	try {
+		if (getWeatherAiConesMode() === 'fixture') {
+			// Démonstration : run de référence bundlé, aucune requête à l'API.
+			if (!active?.demo) commitRun(await loadDemoRun(ctl.signal));
+			weatherAiStatus.set({ state: 'ready' });
+			void syncCones();
+			return;
+		}
 		const catalog = await fetchCatalog(base, ctl.signal);
 		if (active && catalog.run_id === active.runId) {
 			weatherAiStatus.set({ state: 'ready' });

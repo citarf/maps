@@ -57,6 +57,8 @@ export interface LoadedRun {
 	ignored: string[];
 	/** Produits chargés et validés, par `product_id`. */
 	loaded: Record<string, LoadedProduct>;
+	/** Run de démonstration bundlé (mode `fixture`), jamais servi par l'API. */
+	demo?: true;
 }
 
 const cache = new Map<string, GridFrame | TracksFrame>();

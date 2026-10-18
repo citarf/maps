@@ -78,12 +78,19 @@ export function getWeatherAiApiUrl(): string {
 /**
  * Feature flag des cônes d'incertitude (`global-cyclone-cones-public`, pas encore
  * servis par le portail). `off` (défaut) : jamais affichés. `on` : affichés quand
- * le produit apparaît dans le catalogue. `fixture` (dev) : document de
- * démonstration bundlé, affiché seulement s'il porte le `run_id` du run actif.
+ * le produit apparaît dans le catalogue. `fixture` : démonstration hors API
+ * (trajectoires archivées du run de référence + cônes fictifs du même run),
+ * activable aussi par le paramètre d'URL `?weather_ai_cones=fixture` pour juger
+ * le rendu en prévisualisation. Le paramètre d'URL ne peut que demander la démo,
+ * jamais allumer `on`.
  */
 export type WeatherAiConesMode = 'off' | 'on' | 'fixture';
 
 export function getWeatherAiConesMode(): WeatherAiConesMode {
+	if (typeof window !== 'undefined') {
+		const fromUrl = new URLSearchParams(window.location.search).get('weather_ai_cones');
+		if (fromUrl === 'fixture') return 'fixture';
+	}
 	let raw: string | undefined;
 	if (typeof window !== 'undefined' && window.__OM_CONFIG?.WEATHER_AI_CONES) {
 		raw = window.__OM_CONFIG.WEATHER_AI_CONES;
