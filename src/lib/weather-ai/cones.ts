@@ -91,7 +91,26 @@ export function validateCones(
 	if (doc.public_delivery_allowed !== true) return 'diffusion publique non permise';
 	if (doc.mention !== CONES_MENTION) return 'mention de calibration absente ou différente';
 	if (!Array.isArray(doc.storms)) return 'cyclones absents';
+	for (const storm of doc.storms) {
+		const limit = stormLeadLimit(doc, storm);
+		if (storm.maximum_lead_hours > limit) {
+			return `échéance maximale de ${storm.storm_id} au-delà de la limite (+${limit} h)`;
+		}
+		// Hémisphère sud : aucun cône disponible au-delà de southern_maximum_lead_hours.
+		if (storm.cones.some((c) => c.available && c.lead_hours > limit)) {
+			return `cône disponible au-delà de +${limit} h pour ${storm.storm_id}`;
+		}
+	}
 	return null;
+}
+
+/**
+ * Échéance maximale d'un cyclone : la sienne, bornée par la limite globale et,
+ * dans l'hémisphère sud, par `southern_maximum_lead_hours`.
+ */
+export function stormLeadLimit(doc: ConesProduct, storm: ConeStorm): number {
+	const global = Math.min(doc.maximum_lead_hours, storm.maximum_lead_hours);
+	return storm.hemisphere === 'south' ? Math.min(global, doc.southern_maximum_lead_hours) : global;
 }
 
 type AvailableCone = Extract<Cone, { available: true }>;
@@ -171,7 +190,9 @@ export function conesToGeoJson(doc: ConesProduct): {
 	const envelopes: GeoJSON.Feature[] = [];
 	const centres: GeoJSON.Feature<GeoJSON.Point>[] = [];
 	for (const storm of doc.storms) {
-		const runs = availableRuns(storm.cones);
+		// Défense en profondeur : rien au-delà de la limite du cyclone (sud : +24 h).
+		const limit = stormLeadLimit(doc, storm);
+		const runs = availableRuns(storm.cones.filter((c) => c.lead_hours <= limit));
 		for (const level of ['0.90', '0.68'] as ConeLevel[]) {
 			for (const run of runs) {
 				const env = envelope(run, level);

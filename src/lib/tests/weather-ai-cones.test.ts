@@ -92,3 +92,47 @@ describe('envelope', () => {
 		expect(centres.features.every((f) => f.properties!.members >= doc.member_quorum)).toBe(true);
 	});
 });
+
+describe('limite de l’hémisphère sud (southern_maximum_lead_hours)', () => {
+	// Document synthétique : cyclone sud limité à +24 h, mais avec un cône
+	// « disponible » à +48 h (contrat violé).
+	const southDoc = (): ConesProduct => ({
+		...doc,
+		storms: [
+			{
+				storm_id: 'ecmwf-tf:2026:02S',
+				hemisphere: 'south',
+				maximum_lead_hours: 24,
+				cones: [cone(6, -15, 60), cone(24, -16, 58), cone(48, -18, 55)]
+			}
+		]
+	});
+
+	it('refuse un cône disponible au-delà de la limite sud', () => {
+		expect(validateCones(southDoc(), expected)).toMatch(/au-delà de \+24 h/);
+	});
+
+	it('refuse un cyclone sud annonçant une échéance maximale au-delà de la limite', () => {
+		const d = southDoc();
+		d.storms[0].maximum_lead_hours = 72;
+		d.storms[0].cones = d.storms[0].cones.slice(0, 2);
+		expect(validateCones(d, expected)).toMatch(/limite/);
+	});
+
+	it('n’affiche jamais un cône sud au-delà de la limite, même sans validation', () => {
+		const { centres } = conesToGeoJson(southDoc());
+		expect(centres.features.map((f) => f.properties!.lead)).toEqual([6, 24]);
+	});
+
+	it('accepte un cyclone sud limité à +24 h avec des indisponibilités au-delà', () => {
+		const d = southDoc();
+		d.storms[0].cones[2] = {
+			lead_hours: 48,
+			valid_time: '2026-10-20T00:00:00Z',
+			available: false,
+			available_members: 3,
+			reason: 'southern_hemisphere_availability_below_threshold'
+		};
+		expect(validateCones(d, expected)).toBeNull();
+	});
+});
