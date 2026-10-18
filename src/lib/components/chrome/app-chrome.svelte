@@ -2,6 +2,7 @@
 	import { desktop, sidebarWidth } from '$lib/stores/preferences';
 
 	import CaptureFlow from '$lib/components/capture/capture-flow.svelte';
+	import WeatherAiMapCard from '$lib/components/weather-ai/weather-ai-map-card.svelte';
 
 	import AdvancedPanel from './advanced-panel.svelte';
 	import ContextStrip from './context-strip.svelte';
@@ -28,6 +29,9 @@
 >
 	<ContextStrip />
 </div>
+
+<!-- Couches expérimentales Weather AI : mentions obligatoires + échéance sur la carte. -->
+<WeatherAiMapCard />
 
 {#if desktop.current}
 	<Sidebar />

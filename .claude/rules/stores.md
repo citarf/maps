@@ -10,7 +10,9 @@ paths:
 
 All app state lives under `src/lib/stores/` as svelte stores. Many are `persisted(...)` from `svelte-persisted-store` (localStorage-backed): `preferences`, `tileSize`, `opacity`, `cacheBlockSizeKb`, `cacheMaxBytesMb`, `customColorScales`, units, etc. `localStorageVersion` is compared against `package.json` version on mount; when it changes, `resetStates()` in `preferences.ts` wipes all persisted state — bump the package version when introducing breaking state shape changes.
 
-`sidebarCollapsed` (persisté) mémorise le repli de la sidebar desktop ; `sidebarTab` (persisté, `'layers' | 'compositions' | 'map'`) l'onglet actif, partagé sidebar desktop / bottom-sheet mobile ; `sidebarWidth` (writable non persisté, `preferences.ts`) publie la largeur occupée par la sidebar (0 quand démontée — mobile) et sert à décaler timeline et légende.
+`sidebarCollapsed` (persisté) mémorise le repli de la sidebar desktop ; `sidebarTab` (persisté, `'layers' | 'compositions' | 'map' | 'cyclones'`) l'onglet actif, partagé sidebar desktop / bottom-sheet mobile ; `sidebarWidth` (writable non persisté, `preferences.ts`) publie la largeur occupée par la sidebar (0 quand démontée — mobile) et sert à décaler timeline et légende.
+
+`src/lib/stores/weather-ai.ts` porte l'état des couches Weather AI : `weatherAiLayers` (persisté `weather-ai-layers`, `Record<'mslp' | 'existence' | 'tracks' | 'cones', boolean>`, défaut tout à `false`, normalisé en `beforeRead`), et, non persistés, `weatherAiRun` (run affiché, remplacé d'un bloc par `controller.ts`), `weatherAiTime` (`valid_time` affiché), `weatherAiStatus` et `weatherAiCones` (document de cônes du run affiché ou raison de son absence). Remis à zéro par `resetStates()` ; pas de paramètre d'URL (v1).
 
 `src/lib/stores/sounding.ts` gère l'état du panel de sondage vertical (`open`, `lat`, `lng`, `activeTab`). Ce store n'est ni persisté ni synchronisé dans l'URL (MVP) — l'état est perdu au rechargement de page.
 

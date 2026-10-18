@@ -32,6 +32,7 @@ import {
 } from './units';
 import { domain, domainSelectionOpen, variable } from './variables';
 import { defaultVectorOptions, vectorOptions } from './vector';
+import { DEFAULT_WEATHER_AI_LAYERS, weatherAiLayers } from './weather-ai';
 
 export const defaultPreferences = DEFAULT_PREFERENCES;
 
@@ -55,7 +56,7 @@ export const advancedOpen = writable(false);
 export const sidebarCollapsed = persisted('sidebar-collapsed', false);
 export const sidebarWidth = writable(0);
 // Onglet actif du panneau latéral (desktop) / du bottom-sheet (mobile).
-export type SidebarTab = 'layers' | 'compositions' | 'map';
+export type SidebarTab = 'layers' | 'compositions' | 'map' | 'cyclones';
 export const sidebarTab = persisted<SidebarTab>('sidebar-tab', 'layers');
 
 export const loading = writable(true);
@@ -143,6 +144,7 @@ export const resetStates = async () => {
 	helpOpen.set(false);
 	sidebarCollapsed.set(false);
 	sidebarTab.set('layers');
+	weatherAiLayers.set(DEFAULT_WEATHER_AI_LAYERS);
 	scaleCollapsed.set(true);
 
 	setMode('dark');
