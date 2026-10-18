@@ -45,6 +45,14 @@ export class RunScopedCache<V> {
 		return true;
 	}
 
+	/** Retire et libère une entrée (ex. ressource suspectée après un échec de chargement). */
+	delete(key: string): void {
+		const v = this.entries.get(key);
+		if (v === undefined) return;
+		this.entries.delete(key);
+		this.dispose(v);
+	}
+
 	get size(): number {
 		return this.entries.size;
 	}

@@ -21,7 +21,11 @@ export interface SlotAdapter<P> {
 	onChange(cb: () => void): () => void;
 }
 
-export type CommitResult = 'shown' | 'cleared' | 'stale' | 'unchanged';
+/**
+ * `timeout` : le nouvel état ne s'est pas chargé dans le délai ; il est retiré
+ * et l'état précédent reste affiché (l'appelant signale l'échec et réessaie).
+ */
+export type CommitResult = 'shown' | 'cleared' | 'stale' | 'unchanged' | 'timeout';
 
 export interface LayerSwitcher<P> {
 	/**
@@ -44,21 +48,22 @@ export function createLayerSwitcher<P>(
 	let requested: string | null = null;
 
 	const waitLoaded = (slot: string, my: number) =>
-		new Promise<void>((resolve) => {
+		new Promise<'loaded' | 'stale' | 'timeout'>((resolve) => {
 			let done = false;
 			let off = () => {};
-			const finish = () => {
+			const finish = (outcome: 'loaded' | 'stale' | 'timeout') => {
 				if (done) return;
 				done = true;
 				clearTimeout(timer);
 				off();
-				resolve();
+				resolve(outcome);
 			};
 			const check = () => {
-				if (my !== seq || adapter.loaded(slot)) finish();
+				if (my !== seq) finish('stale');
+				else if (adapter.loaded(slot)) finish('loaded');
 			};
-			// Garde : un slot qui ne se charge jamais ne bloque pas l'affichage.
-			const timer = setTimeout(finish, timeoutMs);
+			// Garde : un slot qui ne se charge jamais n'est PAS affiché incomplet.
+			const timer = setTimeout(() => finish('timeout'), timeoutMs);
 			off = adapter.onChange(check);
 			check();
 		});
@@ -91,7 +96,14 @@ export function createLayerSwitcher<P>(
 			const slot = `s${++counter}`;
 			pending = slot;
 			adapter.mount(slot, plan);
-			await waitLoaded(slot, my);
+			const outcome = await waitLoaded(slot, my);
+			if (outcome === 'timeout' && my === seq) {
+				// Incomplet : on le retire et on garde l'état affiché tel quel.
+				adapter.unmount(slot);
+				pending = null;
+				requested = active?.signature ?? null;
+				return 'timeout';
+			}
 			if (my !== seq) {
 				// Dépassé : le commit plus récent a déjà retiré ce slot, ou le retirera.
 				if (pending === slot) {

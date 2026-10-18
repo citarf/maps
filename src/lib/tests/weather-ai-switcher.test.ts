@@ -143,14 +143,60 @@ describe('createLayerSwitcher', () => {
 		expect(m.slots.size).toBe(0);
 	});
 
-	it('un slot qui ne se charge jamais finit par s’afficher (garde de délai)', async () => {
+	it('délai dépassé : garde l’état affiché, retire et nettoie le slot incomplet', async () => {
+		vi.useFakeTimers();
+		try {
+			const m = fakeMap();
+			const off = vi.fn();
+			const onChange = m.adapter.onChange;
+			m.adapter.onChange = (cb) => {
+				const unsubscribe = onChange(cb);
+				return () => {
+					off();
+					unsubscribe();
+				};
+			};
+			const sw = createLayerSwitcher(m.adapter, { timeoutMs: 1000 });
+			const a = sw.commit('A', async () => 'A');
+			await vi.advanceTimersByTimeAsync(0);
+			m.load('A');
+			expect(await a).toBe('shown');
+			const listenersAfterA = off.mock.calls.length;
+
+			const b = sw.commit('B', async () => 'B'); // B ne se charge jamais
+			await vi.advanceTimersByTimeAsync(1001);
+			expect(await b).toBe('timeout');
+			expect(m.visible()).toEqual(['A']); // A toujours affiché
+			expect(m.log).not.toContain('show s2 B'); // B jamais affiché incomplet
+			expect(m.log).toContain('unmount s2'); // B retiré (sources comprises)
+			expect(m.log).not.toContain('unmount s1');
+			expect(m.slots.size).toBe(1);
+			expect(off.mock.calls.length).toBe(listenersAfterA + 1); // écouteur retiré
+			expect(vi.getTimerCount()).toBe(0); // minuterie de garde nettoyée
+			expect(sw.activeSlot).toBe('s1');
+
+			// Réessai (prochain relevé) : B finit par s'afficher s'il se charge.
+			expect(await sw.commit('A', async () => 'A')).toBe('unchanged');
+			const retry = sw.commit('B', async () => 'B');
+			await vi.advanceTimersByTimeAsync(0);
+			m.load('B');
+			expect(await retry).toBe('shown');
+			expect(m.visible()).toEqual(['B']);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('délai dépassé sans état précédent : rien n’est affiché', async () => {
 		vi.useFakeTimers();
 		try {
 			const m = fakeMap();
 			const sw = createLayerSwitcher(m.adapter, { timeoutMs: 1000 });
 			const a = sw.commit('A', async () => 'A');
 			await vi.advanceTimersByTimeAsync(1001);
-			expect(await a).toBe('shown');
+			expect(await a).toBe('timeout');
+			expect(m.slots.size).toBe(0);
+			expect(sw.activeSlot).toBeNull();
 		} finally {
 			vi.useRealTimers();
 		}
@@ -180,6 +226,17 @@ describe('RunScopedCache', () => {
 		cache.scope('runB');
 		expect(cache.size).toBe(0);
 		expect(disposed).toEqual(['blob:1']);
+	});
+
+	it('delete retire et libère une entrée (raster d’un slot qui ne s’est pas chargé)', () => {
+		const disposed: string[] = [];
+		const cache = new RunScopedCache<string>((v) => disposed.push(v));
+		const gen = cache.scope('runA');
+		cache.set(gen, 'k', 'blob:k');
+		cache.delete('k');
+		cache.delete('absent');
+		expect(cache.get('k')).toBeUndefined();
+		expect(disposed).toEqual(['blob:k']);
 	});
 
 	it('la clé distingue run, produit et échéance', () => {

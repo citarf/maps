@@ -20,10 +20,12 @@ import {
 	weatherAiCones,
 	weatherAiLayers,
 	weatherAiRun,
+	weatherAiStatus,
 	weatherAiTime
 } from '$lib/stores/weather-ai';
 
 import { CONE_REASON_LABELS, type ConesProduct, coneAt, conesToGeoJson } from './cones';
+import { CATALOG_POLL_MS } from './controller';
 import { MERCATOR_IMAGE_COORDINATES, renderMercatorRgba } from './grid';
 import { createLayerSwitcher } from './layer-switcher';
 import { type GridFrame, type LoadedRun, leadHours } from './loader';
@@ -48,6 +50,8 @@ type Fc = GeoJSON.FeatureCollection;
 export interface RenderPlan {
 	dark: boolean;
 	rasterUrl?: string;
+	/** Clé de cache du raster, pour le libérer si le slot ne se charge pas. */
+	rasterKey?: string;
 	isobars?: Fc;
 	trackLines?: Fc;
 	trackPoints?: Fc;
@@ -152,6 +156,7 @@ async function preparePlan({
 				}
 			}
 			plan.rasterUrl = url;
+			if (url) plan.rasterKey = key;
 		}
 	}
 
@@ -477,6 +482,12 @@ function mapAdapter(map: maplibregl.Map) {
 	};
 }
 
+/** Message d'échec de rendu (distinct des erreurs de chargement du contrôleur). */
+export const RENDER_TIMEOUT_MESSAGE =
+	"Affichage Weather AI incomplet (délai dépassé) : l'état précédent est conservé, nouvel essai au prochain relevé.";
+
+let retryTimer: ReturnType<typeof setTimeout> | undefined;
+
 let switcherMap: maplibregl.Map | undefined;
 let switcher: ReturnType<typeof createLayerSwitcher<RenderPlan>> | undefined;
 
@@ -513,8 +524,28 @@ export async function syncWeatherAiLayers(): Promise<void> {
 		cones: cones && run && cones.runId === run.runId ? cones.doc : null,
 		dark: get(basemapTheme) === 'dark'
 	};
+	clearTimeout(retryTimer);
+	retryTimer = undefined;
+	let plan: RenderPlan | null = null;
 	try {
-		await switcher!.commit(planSignature(input), () => preparePlan(input));
+		const result = await switcher!.commit(planSignature(input), async () => {
+			plan = await preparePlan(input);
+			return plan;
+		});
+		if (result === 'timeout') {
+			// Slot incomplet retiré par le commutateur, état précédent conservé.
+			// Le raster de ce plan est libéré (recalculé au prochain essai).
+			const key = (plan as RenderPlan | null)?.rasterKey;
+			if (key) rasters.delete(key);
+			console.warn('[weather-ai] render timeout, previous state kept');
+			weatherAiStatus.set({ state: 'error', message: RENDER_TIMEOUT_MESSAGE });
+			retryTimer = setTimeout(() => void syncWeatherAiLayers(), CATALOG_POLL_MS);
+		} else if (
+			(result === 'shown' || result === 'cleared') &&
+			get(weatherAiStatus).message === RENDER_TIMEOUT_MESSAGE
+		) {
+			weatherAiStatus.set({ state: 'ready' });
+		}
 	} catch (err) {
 		console.warn('[weather-ai] render failed', err);
 	}
