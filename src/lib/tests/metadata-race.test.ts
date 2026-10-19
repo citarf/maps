@@ -2,6 +2,7 @@ import { get } from 'svelte/store';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { loading } from '$lib/stores/preferences';
 import { inProgress, latest, modelRun } from '$lib/stores/time';
 import { domain } from '$lib/stores/variables';
 
@@ -27,6 +28,12 @@ const outcome = <T>(p: Promise<T>) =>
 		(value) => ({ value }),
 		(error: unknown) => ({ error })
 	);
+/** Run décrit par la réponse : celui du chemin pour un meta.json, sinon le
+ *  dernier run du domaine (latest.json / in-progress.json). */
+const referenceOf = (url: string) => {
+	const run = url.match(/\/(\d{4})\/(\d\d)\/(\d\d)\/(\d\d)(\d\d)Z\/meta\.json$/);
+	return run ? `${run[1]}-${run[2]}-${run[3]}T${run[4]}:${run[5]}:00Z` : RUNS[domainOf(url)];
+};
 const domainOf = (url: string) => url.split('/data_spatial/')[1].split('/')[0];
 
 /** Faux bucket : chaque réponse attend d'être libérée à la main (`release`). */
@@ -39,7 +46,7 @@ function deferredBucket() {
 				requests.push({
 					url,
 					release: (status = 200) => {
-						const body = status === 200 ? JSON.stringify(meta(RUNS[domainOf(url)])) : '';
+						const body = status === 200 ? JSON.stringify(meta(referenceOf(url))) : '';
 						resolve(Object.defineProperty(new Response(body, { status }), 'url', { value: url }));
 					}
 				});
@@ -185,12 +192,35 @@ describe('getMetaData : meta.json d’un run passé', () => {
 		expect(((await pending) as { error: unknown }).error).toBeInstanceOf(StaleMetadataError);
 	});
 
+	it('404 d’un run déjà quitté : l’indicateur de chargement du domaine courant reste intact', async () => {
+		const bucket = await loaded();
+		modelRun.set(PAST);
+		const pending = outcome(getMetaData());
+		await bucket.flush();
+		domain.set('dwd_icon');
+		loading.set(true); // chargement de la nouvelle sélection en cours
+		await bucket.release('/meta.json', 404);
+		expect(((await pending) as { error: unknown }).error).toBeInstanceOf(StaleMetadataError);
+		expect(get(loading)).toBe(true);
+	});
+
+	it('404 du run courant : l’indicateur de chargement est bien levé', async () => {
+		const bucket = await loaded();
+		modelRun.set(PAST);
+		loading.set(true);
+		const pending = outcome(getMetaData());
+		await bucket.flush();
+		await bucket.release('/1800Z/meta.json', 404);
+		expect(await pending).toEqual({ error: new Error('HTTP 404') });
+		expect(get(loading)).toBe(false);
+	});
+
 	it('sans changement, le meta.json du run passé est renvoyé, et un 404 reste une erreur', async () => {
 		const bucket = await loaded();
 		modelRun.set(PAST);
 		const ok = getMetaData();
 		await bucket.release('/1800Z/meta.json');
-		expect((await ok).reference_time).toBe(RUNS.ecmwf_ifs025);
+		expect((await ok).reference_time).toBe('2026-10-18T18:00:00Z');
 
 		const missing = outcome(getMetaData());
 		await bucket.flush();

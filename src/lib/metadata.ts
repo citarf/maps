@@ -73,10 +73,9 @@ const fetchMetaData = async (
 	const url = `${uri}/data_spatial/${domain}/${fmtModelRun(modelRun)}/meta.json`;
 	const res = await fetch(url);
 
-	if (!res.ok) {
-		loading.set(false);
-		throw new Error(`HTTP ${res.status}`);
-	}
+	// `loading` n'est remis à zéro qu'après le contrôle de péremption (getMetaData) :
+	// le 404 d'un run déjà quitté ne doit pas masquer le chargement en cours.
+	if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
 	return res.json();
 };
@@ -108,8 +107,11 @@ export const getMetaData = async (): Promise<DomainMetaDataJson> => {
 		: matchesModelRun(inProgressReferenceTime, modelRun)
 			? (inProgress as DomainMetaDataJson)
 			: await fetchMetaData(uri, domain, modelRun).catch((e: unknown) => {
-					// Erreur d'un run ou d'un domaine déjà quitté : périmée aussi.
-					throw isStale() ? new StaleMetadataError() : e;
+					// Erreur d'un run ou d'un domaine déjà quitté : périmée aussi, sans
+					// toucher à l'état de la sélection courante.
+					if (isStale()) throw new StaleMetadataError();
+					loading.set(false);
+					throw e;
 				});
 	if (isStale()) throw new StaleMetadataError();
 
