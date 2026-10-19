@@ -6,9 +6,18 @@ import { loading } from '$lib/stores/preferences';
 import { inProgress as iP, latest as l, metaJson as mJ, modelRun as mR } from '$lib/stores/time';
 import { domain as d, selectedDomain, variable as v } from '$lib/stores/variables';
 
-import { DOMAIN_DEFAULT_VARIABLES } from '$lib/constants';
+import { DOMAIN_DEFAULT_VARIABLES, WEATHER_AI_DOMAIN } from '$lib/constants';
 
 import { fmtModelRun, getBaseUri } from './helpers';
+
+/** Le domaine n'a encore publié aucune échéance : rien à afficher, sans que ce
+ *  soit une panne (message destiné à l'utilisateur). */
+export class DomainUnavailableError extends Error {}
+
+/** Domaines dont le tout premier run peut être consulté pendant sa publication :
+ *  le producteur Weather AI ne dépose `latest.json` qu'après la 12ᵉ échéance,
+ *  mais réécrit `in-progress.json` (`completed: false`) après chaque `.om`. */
+const FIRST_RUN_FROM_IN_PROGRESS: ReadonlySet<string> = new Set([WEATHER_AI_DOMAIN]);
 
 export const getInitialMetaData = async () => {
 	const domain = get(selectedDomain);
@@ -18,6 +27,32 @@ export const getInitialMetaData = async () => {
 		fetch(`${uri}/data_spatial/${domain.value}/latest.json`),
 		fetch(`${uri}/data_spatial/${domain.value}/in-progress.json`)
 	]);
+
+	// Premier run en cours de publication : `latest.json` n'existe pas encore. Le
+	// run en cours tient lieu de dernier run (sélectionné par défaut, limité à ses
+	// échéances déposées) jusqu'à ce que `latest.json` paraisse. Seul un 404 de
+	// `latest.json` est concerné ; toute autre réponse reste une erreur.
+	if (FIRST_RUN_FROM_IN_PROGRESS.has(domain.value) && latestRes.status === 404) {
+		const unavailable = new DomainUnavailableError(
+			`${domain.label} : aucune échéance publiée pour l'instant (premier run en cours de publication).`
+		);
+		if (inProgressRes.status === 404) {
+			loading.set(false);
+			throw unavailable;
+		}
+		if (!inProgressRes.ok) {
+			loading.set(false);
+			throw new Error(`HTTP ${inProgressRes.status}`);
+		}
+		const run: DomainMetaDataJson = await inProgressRes.json();
+		if (!run.valid_times?.length) {
+			loading.set(false);
+			throw unavailable;
+		}
+		l.set(run);
+		iP.set(run);
+		return;
+	}
 
 	for (const res of [latestRes, inProgressRes]) {
 		if (!res.ok) {

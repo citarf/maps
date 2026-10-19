@@ -26,7 +26,12 @@ import {
 	WEATHER_AI_DOMAIN
 } from '$lib/constants';
 import { getBaseUri } from '$lib/helpers';
-import { getInitialMetaData, getMetaData, matchVariableOrFirst } from '$lib/metadata';
+import {
+	DomainUnavailableError,
+	getInitialMetaData,
+	getMetaData,
+	matchVariableOrFirst
+} from '$lib/metadata';
 import { applyModelSelectorLabels } from '$lib/model-selector-labels';
 import { getOMUrlFor } from '$lib/url';
 import { registerWeatherAiDomain, weatherAiDomain } from '$lib/weather-ai-domain';
@@ -45,8 +50,12 @@ const RUN_06Z = new Date('2026-10-19T06:00:00Z');
 const respond = (url: string, body: BodyInit | null, init?: ResponseInit) =>
 	Object.defineProperty(new Response(body, init), 'url', { value: url });
 
-/** Faux bucket servant la fixture comme S3 : JSON, HEAD et lectures `Range`. */
-function stubBucket() {
+/** Réponse imposée pour un chemin du bucket (statut, corps JSON éventuel). */
+type Override = { status: number; json?: unknown };
+
+/** Faux bucket servant la fixture comme S3 : JSON, HEAD et lectures `Range`.
+ *  `overrides` remplace la réponse de certains chemins (ex. `latest.json` absent). */
+function stubBucket(overrides: Record<string, Override> = {}) {
 	const requests: string[] = [];
 	vi.stubGlobal('fetch', async (input: string | URL, init?: RequestInit) => {
 		const url = String(input);
@@ -54,6 +63,11 @@ function stubBucket() {
 		if (url.startsWith('file:'))
 			return respond(url, new Uint8Array(readFileSync(fileURLToPath(url))));
 		requests.push(url);
+		const override = Object.entries(overrides).find(([path]) => url.endsWith('/' + path))?.[1];
+		if (override) {
+			const body = override.json === undefined ? 'NoSuchKey' : JSON.stringify(override.json);
+			return respond(url, body, { status: override.status });
+		}
 		if (!url.startsWith(BUCKET + '/')) return respond(url, '', { status: 404 });
 		let bytes: Buffer;
 		try {
@@ -237,6 +251,92 @@ describe('métadonnées du bucket', () => {
 		variable.set('temperature_2m');
 		matchVariableOrFirst();
 		expect(get(variable)).toBe('pressure_msl');
+	});
+});
+
+describe('premier run en cours de publication (latest.json absent)', () => {
+	const IN_PROGRESS = `data_spatial/${WEATHER_AI_DOMAIN}/in-progress.json`;
+	const LATEST = `data_spatial/${WEATHER_AI_DOMAIN}/latest.json`;
+	const missing = { status: 404 };
+
+	beforeEach(() => {
+		registerWeatherAiDomain();
+		domain.set(WEATHER_AI_DOMAIN);
+		modelRun.set(undefined);
+		latest.set(undefined);
+		inProgress.set(undefined);
+	});
+
+	afterEach(() => {
+		domain.set('arome_france');
+		modelRun.set(undefined);
+		latest.set(undefined);
+		inProgress.set(undefined);
+	});
+
+	it('le run en cours tient lieu de dernier run, limité aux échéances déposées', async () => {
+		stubBucket({ [LATEST]: missing });
+		await getInitialMetaData();
+		expect(get(latest)?.reference_time).toBe('2026-10-19T06:00:00Z');
+		expect(get(inProgress)?.reference_time).toBe('2026-10-19T06:00:00Z');
+		const meta = await getMetaData();
+		expect(get(modelRun)?.toISOString()).toBe(RUN_06Z.toISOString());
+		expect(meta.completed).toBe(false);
+		expect(meta.valid_times).toEqual(['2026-10-19T12:00:00Z', '2026-10-19T18:00:00Z']);
+	});
+
+	it('dès que latest.json existe, le dernier run complet redevient le défaut', async () => {
+		stubBucket({ [LATEST]: missing });
+		await getInitialMetaData();
+		stubBucket();
+		await getInitialMetaData(); // relevé périodique des métadonnées
+		modelRun.set(undefined);
+		await getMetaData();
+		expect(get(modelRun)?.toISOString()).toBe('2026-10-19T00:00:00.000Z');
+	});
+
+	it('aucune échéance publiée : modèle indisponible, message explicite', async () => {
+		stubBucket({ [LATEST]: missing, [IN_PROGRESS]: missing });
+		const error = await getInitialMetaData().catch((e: unknown) => e);
+		expect(error).toBeInstanceOf(DomainUnavailableError);
+		expect((error as Error).message).toBe(
+			"Weather AI (WeatherNext) : aucune échéance publiée pour l'instant (premier run en cours de publication)."
+		);
+		expect(get(latest)).toBeUndefined();
+	});
+
+	it('run en cours sans échéance déposée : indisponible aussi', async () => {
+		const empty = {
+			completed: false,
+			last_modified_time: '2026-10-19T12:00:00Z',
+			reference_time: '2026-10-19T06:00:00Z',
+			valid_times: [],
+			variables: ['pressure_msl', 'cyclone_existence_probability']
+		};
+		stubBucket({ [LATEST]: missing, [IN_PROGRESS]: { status: 200, json: empty } });
+		await expect(getInitialMetaData()).rejects.toBeInstanceOf(DomainUnavailableError);
+	});
+
+	it('les autres erreurs restent des erreurs', async () => {
+		stubBucket({ [LATEST]: missing, [IN_PROGRESS]: { status: 500 } });
+		const inProgressDown = await getInitialMetaData().catch((e: unknown) => e);
+		expect(inProgressDown).not.toBeInstanceOf(DomainUnavailableError);
+		expect((inProgressDown as Error).message).toBe('HTTP 500');
+
+		stubBucket({ [LATEST]: { status: 403 } });
+		const latestDenied = await getInitialMetaData().catch((e: unknown) => e);
+		expect(latestDenied).not.toBeInstanceOf(DomainUnavailableError);
+		expect((latestDenied as Error).message).toBe('HTTP 403');
+	});
+
+	it('comportement inchangé pour les autres domaines', async () => {
+		// Domaine upstream : latest.json et in-progress.json en 404 (hors faux bucket).
+		domain.set('ecmwf_ifs025');
+		const requests = stubBucket();
+		await expect(getInitialMetaData()).rejects.toThrow('HTTP 404');
+		expect(requests[0]).toContain('/data_spatial/ecmwf_ifs025/latest.json');
+		expect(get(latest)).toBeUndefined();
+		expect(get(inProgress)).toBeUndefined();
 	});
 });
 
