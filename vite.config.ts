@@ -46,6 +46,14 @@ export default ({ mode }: { mode: string }) => {
 		.map((h) => h.trim())
 		.filter(Boolean);
 
+	// Proxy optionnel de l'API Weather AI (même origine) : le portail renvoie
+	// l'en-tête CORS depuis le 18/10/2026 (chom-poc-data#258), l'app l'appelle
+	// donc en direct par défaut. Utile pour diagnostiquer en local
+	// (`VITE_WEATHER_AI_API_URL=/api/weather-ai`). Sans effet en prod (export statique).
+	const weatherAiProxy = {
+		'/api/weather-ai': { target: 'https://portail.chom.engineering', changeOrigin: true }
+	};
+
 	return defineConfig({
 		plugins: [tailwindcss(), sveltekit(), viteServerConfig()],
 		optimizeDeps: {
@@ -53,11 +61,13 @@ export default ({ mode }: { mode: string }) => {
 		},
 		server: {
 			allowedHosts,
+			proxy: weatherAiProxy,
 			fs: {
 				// Allow serving files from one level up to the project root
 				allow: ['..']
 			}
 		},
+		preview: { proxy: weatherAiProxy },
 		build: { chunkSizeWarningLimit: 1500 }
 	});
 };

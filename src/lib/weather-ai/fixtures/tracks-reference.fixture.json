@@ -1,0 +1,899 @@
+{
+	"note": "Extrait archivé du run de référence (GET /products/global-cyclone-tracks-1deg/data?run_id=…, 18/10/2026) : blocs tracker et sources retirés (provenance, inutiles à l'affichage).",
+	"attribution": "WeatherNext Cyclones Mini, Google DeepMind; données initiales ECMWF open data (CC BY 4.0), modifiées, et SST OSTIA (Met Office); trajectoires candidates expérimentales; Generated using E.U. Copernicus Marine Service Information; https://doi.org/10.48670/moi-00165",
+	"license_notice": "Experimental internal POC; WeatherNext Cyclones Mini model weights are CC BY 4.0 and WeatherNext code is Apache-2.0.",
+	"frames": [
+		{
+			"experimental": true,
+			"init_time": "2026-10-18T00:00:00Z",
+			"product_id": "global-cyclone-tracks-1deg",
+			"qualification": {
+				"alert_authority": false,
+				"kind": "seeded_declared_storms_and_cyclogenesis_candidates",
+				"persistence_filter_applied": false,
+				"seeding": {
+					"discarded_genesis_candidates": 13,
+					"seed_count": 3,
+					"seed_position": "0 08 005 = 1, storm centre",
+					"seed_set_sha256": "deaecf3a1968d145013982f570b1164b0b5dea78baaa9baf31abfc379742cdf0",
+					"source": "ecmwf_open_data_tf"
+				}
+			},
+			"run_id": "wn2-oper-20261018T000000Z-adac4e2e6d9b",
+			"schema_version": "cyclone-tracks-product/1.1.0",
+			"snapshot_id": "wn2-input-set-sha256-adac4e2e6d9b2e2f94cca25f329d96922380bb3fef8b43a89c9f5f02fbbc47d2",
+			"tracks": [
+				{
+					"forecast_track_duration_hours": 42,
+					"forecast_track_point_count": 8,
+					"latitude": -16.67087132790128,
+					"longitude": -161.90890297886835,
+					"member": 0,
+					"model_track_id": "ecmwf-tf:2026:01P",
+					"mslp_hpa": 985.5062551222884,
+					"valid_time": "2026-10-18T06:00:00Z",
+					"vmax_ms": 29.779725970881668
+				},
+				{
+					"forecast_track_duration_hours": 54,
+					"forecast_track_point_count": 10,
+					"latitude": 19.08876428153122,
+					"longitude": -106.10106830440589,
+					"member": 0,
+					"model_track_id": "ecmwf-tf:2026:21E",
+					"mslp_hpa": 966.6245492930976,
+					"valid_time": "2026-10-18T06:00:00Z",
+					"vmax_ms": 48.03559748431165
+				},
+				{
+					"forecast_track_duration_hours": 66,
+					"forecast_track_point_count": 12,
+					"latitude": 13.562078823190863,
+					"longitude": 142.64072154193798,
+					"member": 0,
+					"model_track_id": "ecmwf-tf:2026:36W",
+					"mslp_hpa": 953.6471672636783,
+					"valid_time": "2026-10-18T06:00:00Z",
+					"vmax_ms": 52.39897539105818
+				}
+			],
+			"valid_time": "2026-10-18T06:00:00Z"
+		},
+		{
+			"experimental": true,
+			"init_time": "2026-10-18T00:00:00Z",
+			"product_id": "global-cyclone-tracks-1deg",
+			"qualification": {
+				"alert_authority": false,
+				"kind": "seeded_declared_storms_and_cyclogenesis_candidates",
+				"persistence_filter_applied": false,
+				"seeding": {
+					"discarded_genesis_candidates": 13,
+					"seed_count": 3,
+					"seed_position": "0 08 005 = 1, storm centre",
+					"seed_set_sha256": "deaecf3a1968d145013982f570b1164b0b5dea78baaa9baf31abfc379742cdf0",
+					"source": "ecmwf_open_data_tf"
+				}
+			},
+			"run_id": "wn2-oper-20261018T000000Z-adac4e2e6d9b",
+			"schema_version": "cyclone-tracks-product/1.1.0",
+			"snapshot_id": "wn2-input-set-sha256-adac4e2e6d9b2e2f94cca25f329d96922380bb3fef8b43a89c9f5f02fbbc47d2",
+			"tracks": [
+				{
+					"forecast_track_duration_hours": 42,
+					"forecast_track_point_count": 8,
+					"latitude": -17.327440985780445,
+					"longitude": -160.7698148682215,
+					"member": 0,
+					"model_track_id": "ecmwf-tf:2026:01P",
+					"mslp_hpa": 980.2578296878395,
+					"valid_time": "2026-10-18T12:00:00Z",
+					"vmax_ms": 32.948311870836065
+				},
+				{
+					"forecast_track_duration_hours": 54,
+					"forecast_track_point_count": 10,
+					"latitude": 19.734698376248996,
+					"longitude": -106.0832394439766,
+					"member": 0,
+					"model_track_id": "ecmwf-tf:2026:21E",
+					"mslp_hpa": 963.3005771074661,
+					"valid_time": "2026-10-18T12:00:00Z",
+					"vmax_ms": 53.02531809802623
+				},
+				{
+					"forecast_track_duration_hours": 66,
+					"forecast_track_point_count": 12,
+					"latitude": 13.51607807984953,
+					"longitude": 141.2664282273397,
+					"member": 0,
+					"model_track_id": "ecmwf-tf:2026:36W",
+					"mslp_hpa": 926.7328590781864,
+					"valid_time": "2026-10-18T12:00:00Z",
+					"vmax_ms": 68.2317619526029
+				}
+			],
+			"valid_time": "2026-10-18T12:00:00Z"
+		},
+		{
+			"experimental": true,
+			"init_time": "2026-10-18T00:00:00Z",
+			"product_id": "global-cyclone-tracks-1deg",
+			"qualification": {
+				"alert_authority": false,
+				"kind": "seeded_declared_storms_and_cyclogenesis_candidates",
+				"persistence_filter_applied": false,
+				"seeding": {
+					"discarded_genesis_candidates": 13,
+					"seed_count": 3,
+					"seed_position": "0 08 005 = 1, storm centre",
+					"seed_set_sha256": "deaecf3a1968d145013982f570b1164b0b5dea78baaa9baf31abfc379742cdf0",
+					"source": "ecmwf_open_data_tf"
+				}
+			},
+			"run_id": "wn2-oper-20261018T000000Z-adac4e2e6d9b",
+			"schema_version": "cyclone-tracks-product/1.1.0",
+			"snapshot_id": "wn2-input-set-sha256-adac4e2e6d9b2e2f94cca25f329d96922380bb3fef8b43a89c9f5f02fbbc47d2",
+			"tracks": [
+				{
+					"forecast_track_duration_hours": 18,
+					"forecast_track_point_count": 4,
+					"latitude": 7.03555076181527,
+					"longitude": 59.05391078947807,
+					"member": 0,
+					"model_track_id": "cyclogenesis_0",
+					"mslp_hpa": 1005.0004002659107,
+					"valid_time": "2026-10-18T18:00:00Z",
+					"vmax_ms": 11.878184713072692
+				},
+				{
+					"forecast_track_duration_hours": 42,
+					"forecast_track_point_count": 8,
+					"latitude": -18.531572944817096,
+					"longitude": -159.57034594279503,
+					"member": 0,
+					"model_track_id": "ecmwf-tf:2026:01P",
+					"mslp_hpa": 984.5671897017239,
+					"valid_time": "2026-10-18T18:00:00Z",
+					"vmax_ms": 32.440960283962546
+				},
+				{
+					"forecast_track_duration_hours": 54,
+					"forecast_track_point_count": 10,
+					"latitude": 19.50585819926692,
+					"longitude": -106.58440349926809,
+					"member": 0,
+					"model_track_id": "ecmwf-tf:2026:21E",
+					"mslp_hpa": 960.2436894069256,
+					"valid_time": "2026-10-18T18:00:00Z",
+					"vmax_ms": 51.45348990952955
+				},
+				{
+					"forecast_track_duration_hours": 66,
+					"forecast_track_point_count": 12,
+					"latitude": 14.237833146968924,
+					"longitude": 140.53305540070107,
+					"member": 0,
+					"model_track_id": "ecmwf-tf:2026:36W",
+					"mslp_hpa": 899.8447658914492,
+					"valid_time": "2026-10-18T18:00:00Z",
+					"vmax_ms": 84.37774786252807
+				}
+			],
+			"valid_time": "2026-10-18T18:00:00Z"
+		},
+		{
+			"experimental": true,
+			"init_time": "2026-10-18T00:00:00Z",
+			"product_id": "global-cyclone-tracks-1deg",
+			"qualification": {
+				"alert_authority": false,
+				"kind": "seeded_declared_storms_and_cyclogenesis_candidates",
+				"persistence_filter_applied": false,
+				"seeding": {
+					"discarded_genesis_candidates": 13,
+					"seed_count": 3,
+					"seed_position": "0 08 005 = 1, storm centre",
+					"seed_set_sha256": "deaecf3a1968d145013982f570b1164b0b5dea78baaa9baf31abfc379742cdf0",
+					"source": "ecmwf_open_data_tf"
+				}
+			},
+			"run_id": "wn2-oper-20261018T000000Z-adac4e2e6d9b",
+			"schema_version": "cyclone-tracks-product/1.1.0",
+			"snapshot_id": "wn2-input-set-sha256-adac4e2e6d9b2e2f94cca25f329d96922380bb3fef8b43a89c9f5f02fbbc47d2",
+			"tracks": [
+				{
+					"forecast_track_duration_hours": 18,
+					"forecast_track_point_count": 4,
+					"latitude": 7.169502594411586,
+					"longitude": 57.88119312376142,
+					"member": 0,
+					"model_track_id": "cyclogenesis_0",
+					"mslp_hpa": 1005.5329220994146,
+					"valid_time": "2026-10-19T00:00:00Z",
+					"vmax_ms": 14.124251511073755
+				},
+				{
+					"forecast_track_duration_hours": 0,
+					"forecast_track_point_count": 1,
+					"latitude": -64.000157420471,
+					"longitude": -59.02559498720882,
+					"member": 0,
+					"model_track_id": "cyclogenesis_1",
+					"mslp_hpa": 971.0186460475675,
+					"valid_time": "2026-10-19T00:00:00Z",
+					"vmax_ms": 41.61487155982558
+				},
+				{
+					"forecast_track_duration_hours": 6,
+					"forecast_track_point_count": 2,
+					"latitude": 31.933304296208508,
+					"longitude": -70.84294380827328,
+					"member": 0,
+					"model_track_id": "cyclogenesis_2",
+					"mslp_hpa": 1002.2363239708383,
+					"valid_time": "2026-10-19T00:00:00Z",
+					"vmax_ms": 21.174329589118468
+				},
+				{
+					"forecast_track_duration_hours": 0,
+					"forecast_track_point_count": 1,
+					"latitude": 25.99379139324772,
+					"longitude": -115.27889936313466,
+					"member": 0,
+					"model_track_id": "cyclogenesis_3",
+					"mslp_hpa": 1005.9328907163383,
+					"valid_time": "2026-10-19T00:00:00Z",
+					"vmax_ms": 13.60685131004578
+				},
+				{
+					"forecast_track_duration_hours": 42,
+					"forecast_track_point_count": 8,
+					"latitude": -19.479232646790983,
+					"longitude": -157.8552427522992,
+					"member": 0,
+					"model_track_id": "ecmwf-tf:2026:01P",
+					"mslp_hpa": 992.4903645078048,
+					"valid_time": "2026-10-19T00:00:00Z",
+					"vmax_ms": 25.10105230390197
+				},
+				{
+					"forecast_track_duration_hours": 54,
+					"forecast_track_point_count": 10,
+					"latitude": 20.303028128357912,
+					"longitude": -106.73276040217797,
+					"member": 0,
+					"model_track_id": "ecmwf-tf:2026:21E",
+					"mslp_hpa": 987.5374613962287,
+					"valid_time": "2026-10-19T00:00:00Z",
+					"vmax_ms": 32.022451687096876
+				},
+				{
+					"forecast_track_duration_hours": 66,
+					"forecast_track_point_count": 12,
+					"latitude": 14.36982490952316,
+					"longitude": 139.11205861798862,
+					"member": 0,
+					"model_track_id": "ecmwf-tf:2026:36W",
+					"mslp_hpa": 900.738005754565,
+					"valid_time": "2026-10-19T00:00:00Z",
+					"vmax_ms": 82.4560434612721
+				}
+			],
+			"valid_time": "2026-10-19T00:00:00Z"
+		},
+		{
+			"experimental": true,
+			"init_time": "2026-10-18T00:00:00Z",
+			"product_id": "global-cyclone-tracks-1deg",
+			"qualification": {
+				"alert_authority": false,
+				"kind": "seeded_declared_storms_and_cyclogenesis_candidates",
+				"persistence_filter_applied": false,
+				"seeding": {
+					"discarded_genesis_candidates": 13,
+					"seed_count": 3,
+					"seed_position": "0 08 005 = 1, storm centre",
+					"seed_set_sha256": "deaecf3a1968d145013982f570b1164b0b5dea78baaa9baf31abfc379742cdf0",
+					"source": "ecmwf_open_data_tf"
+				}
+			},
+			"run_id": "wn2-oper-20261018T000000Z-adac4e2e6d9b",
+			"schema_version": "cyclone-tracks-product/1.1.0",
+			"snapshot_id": "wn2-input-set-sha256-adac4e2e6d9b2e2f94cca25f329d96922380bb3fef8b43a89c9f5f02fbbc47d2",
+			"tracks": [
+				{
+					"forecast_track_duration_hours": 18,
+					"forecast_track_point_count": 4,
+					"latitude": 7.880960454090797,
+					"longitude": 58.894133850365705,
+					"member": 0,
+					"model_track_id": "cyclogenesis_0",
+					"mslp_hpa": 1003.4847203553567,
+					"valid_time": "2026-10-19T06:00:00Z",
+					"vmax_ms": 18.493933718421953
+				},
+				{
+					"forecast_track_duration_hours": 6,
+					"forecast_track_point_count": 2,
+					"latitude": 33.03483140411269,
+					"longitude": -71.89556156848096,
+					"member": 0,
+					"model_track_id": "cyclogenesis_2",
+					"mslp_hpa": 1001.7322914436673,
+					"valid_time": "2026-10-19T06:00:00Z",
+					"vmax_ms": 23.97971748254388
+				},
+				{
+					"forecast_track_duration_hours": 42,
+					"forecast_track_point_count": 8,
+					"latitude": -21.12953806396879,
+					"longitude": -156.05232903975775,
+					"member": 0,
+					"model_track_id": "ecmwf-tf:2026:01P",
+					"mslp_hpa": 988.9799477965378,
+					"valid_time": "2026-10-19T06:00:00Z",
+					"vmax_ms": 26.907275706134758
+				},
+				{
+					"forecast_track_duration_hours": 54,
+					"forecast_track_point_count": 10,
+					"latitude": 20.99204750477228,
+					"longitude": -107.03538166445117,
+					"member": 0,
+					"model_track_id": "ecmwf-tf:2026:21E",
+					"mslp_hpa": 997.8525361505517,
+					"valid_time": "2026-10-19T06:00:00Z",
+					"vmax_ms": 29.181276867576912
+				},
+				{
+					"forecast_track_duration_hours": 66,
+					"forecast_track_point_count": 12,
+					"latitude": 15.042175864144276,
+					"longitude": 138.09705282894322,
+					"member": 0,
+					"model_track_id": "ecmwf-tf:2026:36W",
+					"mslp_hpa": 886.7258281393812,
+					"valid_time": "2026-10-19T06:00:00Z",
+					"vmax_ms": 91.274579594437
+				}
+			],
+			"valid_time": "2026-10-19T06:00:00Z"
+		},
+		{
+			"experimental": true,
+			"init_time": "2026-10-18T00:00:00Z",
+			"product_id": "global-cyclone-tracks-1deg",
+			"qualification": {
+				"alert_authority": false,
+				"kind": "seeded_declared_storms_and_cyclogenesis_candidates",
+				"persistence_filter_applied": false,
+				"seeding": {
+					"discarded_genesis_candidates": 13,
+					"seed_count": 3,
+					"seed_position": "0 08 005 = 1, storm centre",
+					"seed_set_sha256": "deaecf3a1968d145013982f570b1164b0b5dea78baaa9baf31abfc379742cdf0",
+					"source": "ecmwf_open_data_tf"
+				}
+			},
+			"run_id": "wn2-oper-20261018T000000Z-adac4e2e6d9b",
+			"schema_version": "cyclone-tracks-product/1.1.0",
+			"snapshot_id": "wn2-input-set-sha256-adac4e2e6d9b2e2f94cca25f329d96922380bb3fef8b43a89c9f5f02fbbc47d2",
+			"tracks": [
+				{
+					"forecast_track_duration_hours": 18,
+					"forecast_track_point_count": 4,
+					"latitude": 7.832059100369299,
+					"longitude": 58.40059704981803,
+					"member": 0,
+					"model_track_id": "cyclogenesis_0",
+					"mslp_hpa": 995.2239642225982,
+					"valid_time": "2026-10-19T12:00:00Z",
+					"vmax_ms": 24.309299382827867
+				},
+				{
+					"forecast_track_duration_hours": 42,
+					"forecast_track_point_count": 8,
+					"latitude": -22.462405968613574,
+					"longitude": -153.7477269302355,
+					"member": 0,
+					"model_track_id": "ecmwf-tf:2026:01P",
+					"mslp_hpa": 997.8448085577229,
+					"valid_time": "2026-10-19T12:00:00Z",
+					"vmax_ms": 23.077427214027804
+				},
+				{
+					"forecast_track_duration_hours": 54,
+					"forecast_track_point_count": 10,
+					"latitude": 20.985329151268026,
+					"longitude": -106.91060493434173,
+					"member": 0,
+					"model_track_id": "ecmwf-tf:2026:21E",
+					"mslp_hpa": 998.9920978559612,
+					"valid_time": "2026-10-19T12:00:00Z",
+					"vmax_ms": 25.809578869017088
+				},
+				{
+					"forecast_track_duration_hours": 66,
+					"forecast_track_point_count": 12,
+					"latitude": 15.216333407579974,
+					"longitude": 136.69963282243157,
+					"member": 0,
+					"model_track_id": "ecmwf-tf:2026:36W",
+					"mslp_hpa": 903.9895303824305,
+					"valid_time": "2026-10-19T12:00:00Z",
+					"vmax_ms": 80.26416696265497
+				}
+			],
+			"valid_time": "2026-10-19T12:00:00Z"
+		},
+		{
+			"experimental": true,
+			"init_time": "2026-10-18T00:00:00Z",
+			"product_id": "global-cyclone-tracks-1deg",
+			"qualification": {
+				"alert_authority": false,
+				"kind": "seeded_declared_storms_and_cyclogenesis_candidates",
+				"persistence_filter_applied": false,
+				"seeding": {
+					"discarded_genesis_candidates": 13,
+					"seed_count": 3,
+					"seed_position": "0 08 005 = 1, storm centre",
+					"seed_set_sha256": "deaecf3a1968d145013982f570b1164b0b5dea78baaa9baf31abfc379742cdf0",
+					"source": "ecmwf_open_data_tf"
+				}
+			},
+			"run_id": "wn2-oper-20261018T000000Z-adac4e2e6d9b",
+			"schema_version": "cyclone-tracks-product/1.1.0",
+			"snapshot_id": "wn2-input-set-sha256-adac4e2e6d9b2e2f94cca25f329d96922380bb3fef8b43a89c9f5f02fbbc47d2",
+			"tracks": [
+				{
+					"forecast_track_duration_hours": 30,
+					"forecast_track_point_count": 6,
+					"latitude": 34.191536693730534,
+					"longitude": -70.30237932662465,
+					"member": 0,
+					"model_track_id": "cyclogenesis_4",
+					"mslp_hpa": 998.3387220478326,
+					"valid_time": "2026-10-19T18:00:00Z",
+					"vmax_ms": 21.66180981192667
+				},
+				{
+					"forecast_track_duration_hours": 42,
+					"forecast_track_point_count": 8,
+					"latitude": -23.77640870059083,
+					"longitude": -150.3566438699791,
+					"member": 0,
+					"model_track_id": "ecmwf-tf:2026:01P",
+					"mslp_hpa": 987.58741659935,
+					"valid_time": "2026-10-19T18:00:00Z",
+					"vmax_ms": 27.79058839575118
+				},
+				{
+					"forecast_track_duration_hours": 54,
+					"forecast_track_point_count": 10,
+					"latitude": 20.680117633435994,
+					"longitude": -107.21941411046782,
+					"member": 0,
+					"model_track_id": "ecmwf-tf:2026:21E",
+					"mslp_hpa": 1000.1241986905961,
+					"valid_time": "2026-10-19T18:00:00Z",
+					"vmax_ms": 20.974728060779146
+				},
+				{
+					"forecast_track_duration_hours": 66,
+					"forecast_track_point_count": 12,
+					"latitude": 16.086888203675063,
+					"longitude": 136.190610155103,
+					"member": 0,
+					"model_track_id": "ecmwf-tf:2026:36W",
+					"mslp_hpa": 904.2759244623031,
+					"valid_time": "2026-10-19T18:00:00Z",
+					"vmax_ms": 76.7310526441428
+				}
+			],
+			"valid_time": "2026-10-19T18:00:00Z"
+		},
+		{
+			"experimental": true,
+			"init_time": "2026-10-18T00:00:00Z",
+			"product_id": "global-cyclone-tracks-1deg",
+			"qualification": {
+				"alert_authority": false,
+				"kind": "seeded_declared_storms_and_cyclogenesis_candidates",
+				"persistence_filter_applied": false,
+				"seeding": {
+					"discarded_genesis_candidates": 13,
+					"seed_count": 3,
+					"seed_position": "0 08 005 = 1, storm centre",
+					"seed_set_sha256": "deaecf3a1968d145013982f570b1164b0b5dea78baaa9baf31abfc379742cdf0",
+					"source": "ecmwf_open_data_tf"
+				}
+			},
+			"run_id": "wn2-oper-20261018T000000Z-adac4e2e6d9b",
+			"schema_version": "cyclone-tracks-product/1.1.0",
+			"snapshot_id": "wn2-input-set-sha256-adac4e2e6d9b2e2f94cca25f329d96922380bb3fef8b43a89c9f5f02fbbc47d2",
+			"tracks": [
+				{
+					"forecast_track_duration_hours": 30,
+					"forecast_track_point_count": 6,
+					"latitude": 34.6234578580227,
+					"longitude": -70.16784140117772,
+					"member": 0,
+					"model_track_id": "cyclogenesis_4",
+					"mslp_hpa": 994.0967125941916,
+					"valid_time": "2026-10-20T00:00:00Z",
+					"vmax_ms": 24.32617812702815
+				},
+				{
+					"forecast_track_duration_hours": 24,
+					"forecast_track_point_count": 5,
+					"latitude": 8.306912421465444,
+					"longitude": 57.518099047657245,
+					"member": 0,
+					"model_track_id": "cyclogenesis_5",
+					"mslp_hpa": 999.9988882945801,
+					"valid_time": "2026-10-20T00:00:00Z",
+					"vmax_ms": 22.660967098080476
+				},
+				{
+					"forecast_track_duration_hours": 6,
+					"forecast_track_point_count": 2,
+					"latitude": -6.549572265965273,
+					"longitude": 53.298375977226215,
+					"member": 0,
+					"model_track_id": "cyclogenesis_6",
+					"mslp_hpa": 1009.2635992846951,
+					"valid_time": "2026-10-20T00:00:00Z",
+					"vmax_ms": 11.063389257395269
+				},
+				{
+					"forecast_track_duration_hours": 42,
+					"forecast_track_point_count": 8,
+					"latitude": -23.75713012566501,
+					"longitude": -148.51833628106328,
+					"member": 0,
+					"model_track_id": "ecmwf-tf:2026:01P",
+					"mslp_hpa": 995.5044230489783,
+					"valid_time": "2026-10-20T00:00:00Z",
+					"vmax_ms": 19.71706550621884
+				},
+				{
+					"forecast_track_duration_hours": 54,
+					"forecast_track_point_count": 10,
+					"latitude": 20.994977543357322,
+					"longitude": -107.51008581658778,
+					"member": 0,
+					"model_track_id": "ecmwf-tf:2026:21E",
+					"mslp_hpa": 1003.1318104320102,
+					"valid_time": "2026-10-20T00:00:00Z",
+					"vmax_ms": 18.03210621890293
+				},
+				{
+					"forecast_track_duration_hours": 66,
+					"forecast_track_point_count": 12,
+					"latitude": 16.556487657678122,
+					"longitude": 134.28217166886532,
+					"member": 0,
+					"model_track_id": "ecmwf-tf:2026:36W",
+					"mslp_hpa": 909.1211993350053,
+					"valid_time": "2026-10-20T00:00:00Z",
+					"vmax_ms": 74.9801312415777
+				}
+			],
+			"valid_time": "2026-10-20T00:00:00Z"
+		},
+		{
+			"experimental": true,
+			"init_time": "2026-10-18T00:00:00Z",
+			"product_id": "global-cyclone-tracks-1deg",
+			"qualification": {
+				"alert_authority": false,
+				"kind": "seeded_declared_storms_and_cyclogenesis_candidates",
+				"persistence_filter_applied": false,
+				"seeding": {
+					"discarded_genesis_candidates": 13,
+					"seed_count": 3,
+					"seed_position": "0 08 005 = 1, storm centre",
+					"seed_set_sha256": "deaecf3a1968d145013982f570b1164b0b5dea78baaa9baf31abfc379742cdf0",
+					"source": "ecmwf_open_data_tf"
+				}
+			},
+			"run_id": "wn2-oper-20261018T000000Z-adac4e2e6d9b",
+			"schema_version": "cyclone-tracks-product/1.1.0",
+			"snapshot_id": "wn2-input-set-sha256-adac4e2e6d9b2e2f94cca25f329d96922380bb3fef8b43a89c9f5f02fbbc47d2",
+			"tracks": [
+				{
+					"forecast_track_duration_hours": 30,
+					"forecast_track_point_count": 6,
+					"latitude": 35.65744404640538,
+					"longitude": -71.28284159102958,
+					"member": 0,
+					"model_track_id": "cyclogenesis_4",
+					"mslp_hpa": 990.8340993047916,
+					"valid_time": "2026-10-20T06:00:00Z",
+					"vmax_ms": 26.68042546477502
+				},
+				{
+					"forecast_track_duration_hours": 24,
+					"forecast_track_point_count": 5,
+					"latitude": 9.225484499546512,
+					"longitude": 56.10380434229083,
+					"member": 0,
+					"model_track_id": "cyclogenesis_5",
+					"mslp_hpa": 985.6220923757622,
+					"valid_time": "2026-10-20T06:00:00Z",
+					"vmax_ms": 34.92917114324682
+				},
+				{
+					"forecast_track_duration_hours": 6,
+					"forecast_track_point_count": 2,
+					"latitude": -6.792994366809204,
+					"longitude": 55.874014572845965,
+					"member": 0,
+					"model_track_id": "cyclogenesis_6",
+					"mslp_hpa": 1008.7166482292157,
+					"valid_time": "2026-10-20T06:00:00Z",
+					"vmax_ms": 12.781570146366029
+				},
+				{
+					"forecast_track_duration_hours": 54,
+					"forecast_track_point_count": 10,
+					"latitude": 20.879342844920625,
+					"longitude": -107.5511230147722,
+					"member": 0,
+					"model_track_id": "ecmwf-tf:2026:21E",
+					"mslp_hpa": 1008.4215635060791,
+					"valid_time": "2026-10-20T06:00:00Z",
+					"vmax_ms": 12.715977767929528
+				},
+				{
+					"forecast_track_duration_hours": 66,
+					"forecast_track_point_count": 12,
+					"latitude": 16.50778836157395,
+					"longitude": 133.44472198810422,
+					"member": 0,
+					"model_track_id": "ecmwf-tf:2026:36W",
+					"mslp_hpa": 912.1779529025825,
+					"valid_time": "2026-10-20T06:00:00Z",
+					"vmax_ms": 75.69594886380779
+				}
+			],
+			"valid_time": "2026-10-20T06:00:00Z"
+		},
+		{
+			"experimental": true,
+			"init_time": "2026-10-18T00:00:00Z",
+			"product_id": "global-cyclone-tracks-1deg",
+			"qualification": {
+				"alert_authority": false,
+				"kind": "seeded_declared_storms_and_cyclogenesis_candidates",
+				"persistence_filter_applied": false,
+				"seeding": {
+					"discarded_genesis_candidates": 13,
+					"seed_count": 3,
+					"seed_position": "0 08 005 = 1, storm centre",
+					"seed_set_sha256": "deaecf3a1968d145013982f570b1164b0b5dea78baaa9baf31abfc379742cdf0",
+					"source": "ecmwf_open_data_tf"
+				}
+			},
+			"run_id": "wn2-oper-20261018T000000Z-adac4e2e6d9b",
+			"schema_version": "cyclone-tracks-product/1.1.0",
+			"snapshot_id": "wn2-input-set-sha256-adac4e2e6d9b2e2f94cca25f329d96922380bb3fef8b43a89c9f5f02fbbc47d2",
+			"tracks": [
+				{
+					"forecast_track_duration_hours": 30,
+					"forecast_track_point_count": 6,
+					"latitude": 36.542578362645045,
+					"longitude": -70.96493325190932,
+					"member": 0,
+					"model_track_id": "cyclogenesis_4",
+					"mslp_hpa": 988.296947621307,
+					"valid_time": "2026-10-20T12:00:00Z",
+					"vmax_ms": 29.58710365572616
+				},
+				{
+					"forecast_track_duration_hours": 24,
+					"forecast_track_point_count": 5,
+					"latitude": 10.038496870175887,
+					"longitude": 55.28067340406028,
+					"member": 0,
+					"model_track_id": "cyclogenesis_5",
+					"mslp_hpa": 982.6498195272692,
+					"valid_time": "2026-10-20T12:00:00Z",
+					"vmax_ms": 39.255131245307126
+				},
+				{
+					"forecast_track_duration_hours": 54,
+					"forecast_track_point_count": 10,
+					"latitude": 21.142500410674412,
+					"longitude": -108.03323303021807,
+					"member": 0,
+					"model_track_id": "ecmwf-tf:2026:21E",
+					"mslp_hpa": 1007.6639677195271,
+					"valid_time": "2026-10-20T12:00:00Z",
+					"vmax_ms": 9.061246845276196
+				},
+				{
+					"forecast_track_duration_hours": 66,
+					"forecast_track_point_count": 12,
+					"latitude": 17.405612841793953,
+					"longitude": 132.134708447594,
+					"member": 0,
+					"model_track_id": "ecmwf-tf:2026:36W",
+					"mslp_hpa": 907.746894912094,
+					"valid_time": "2026-10-20T12:00:00Z",
+					"vmax_ms": 75.90186331944784
+				}
+			],
+			"valid_time": "2026-10-20T12:00:00Z"
+		},
+		{
+			"experimental": true,
+			"init_time": "2026-10-18T00:00:00Z",
+			"product_id": "global-cyclone-tracks-1deg",
+			"qualification": {
+				"alert_authority": false,
+				"kind": "seeded_declared_storms_and_cyclogenesis_candidates",
+				"persistence_filter_applied": false,
+				"seeding": {
+					"discarded_genesis_candidates": 13,
+					"seed_count": 3,
+					"seed_position": "0 08 005 = 1, storm centre",
+					"seed_set_sha256": "deaecf3a1968d145013982f570b1164b0b5dea78baaa9baf31abfc379742cdf0",
+					"source": "ecmwf_open_data_tf"
+				}
+			},
+			"run_id": "wn2-oper-20261018T000000Z-adac4e2e6d9b",
+			"schema_version": "cyclone-tracks-product/1.1.0",
+			"snapshot_id": "wn2-input-set-sha256-adac4e2e6d9b2e2f94cca25f329d96922380bb3fef8b43a89c9f5f02fbbc47d2",
+			"tracks": [
+				{
+					"forecast_track_duration_hours": 30,
+					"forecast_track_point_count": 6,
+					"latitude": 36.58629219912747,
+					"longitude": -70.09157223452019,
+					"member": 0,
+					"model_track_id": "cyclogenesis_4",
+					"mslp_hpa": 989.2351569972219,
+					"valid_time": "2026-10-20T18:00:00Z",
+					"vmax_ms": 25.90420770290253
+				},
+				{
+					"forecast_track_duration_hours": 24,
+					"forecast_track_point_count": 5,
+					"latitude": 10.11863832526082,
+					"longitude": 54.122747352433606,
+					"member": 0,
+					"model_track_id": "cyclogenesis_5",
+					"mslp_hpa": 992.6071172099932,
+					"valid_time": "2026-10-20T18:00:00Z",
+					"vmax_ms": 29.877179074601145
+				},
+				{
+					"forecast_track_duration_hours": 6,
+					"forecast_track_point_count": 2,
+					"latitude": 12.240183849012361,
+					"longitude": 93.88289542238766,
+					"member": 0,
+					"model_track_id": "cyclogenesis_7",
+					"mslp_hpa": 1007.1978947227393,
+					"valid_time": "2026-10-20T18:00:00Z",
+					"vmax_ms": 13.29720573981221
+				},
+				{
+					"forecast_track_duration_hours": 6,
+					"forecast_track_point_count": 2,
+					"latitude": 11.330971306668156,
+					"longitude": 169.7579564023631,
+					"member": 0,
+					"model_track_id": "cyclogenesis_8",
+					"mslp_hpa": 1009.9007883626472,
+					"valid_time": "2026-10-20T18:00:00Z",
+					"vmax_ms": 9.93146719311432
+				},
+				{
+					"forecast_track_duration_hours": 66,
+					"forecast_track_point_count": 12,
+					"latitude": 18.293049611579946,
+					"longitude": 130.98642858467502,
+					"member": 0,
+					"model_track_id": "ecmwf-tf:2026:36W",
+					"mslp_hpa": 903.5932195392534,
+					"valid_time": "2026-10-20T18:00:00Z",
+					"vmax_ms": 78.32585202061608
+				}
+			],
+			"valid_time": "2026-10-20T18:00:00Z"
+		},
+		{
+			"experimental": true,
+			"init_time": "2026-10-18T00:00:00Z",
+			"product_id": "global-cyclone-tracks-1deg",
+			"qualification": {
+				"alert_authority": false,
+				"kind": "seeded_declared_storms_and_cyclogenesis_candidates",
+				"persistence_filter_applied": false,
+				"seeding": {
+					"discarded_genesis_candidates": 13,
+					"seed_count": 3,
+					"seed_position": "0 08 005 = 1, storm centre",
+					"seed_set_sha256": "deaecf3a1968d145013982f570b1164b0b5dea78baaa9baf31abfc379742cdf0",
+					"source": "ecmwf_open_data_tf"
+				}
+			},
+			"run_id": "wn2-oper-20261018T000000Z-adac4e2e6d9b",
+			"schema_version": "cyclone-tracks-product/1.1.0",
+			"snapshot_id": "wn2-input-set-sha256-adac4e2e6d9b2e2f94cca25f329d96922380bb3fef8b43a89c9f5f02fbbc47d2",
+			"tracks": [
+				{
+					"forecast_track_duration_hours": 30,
+					"forecast_track_point_count": 6,
+					"latitude": 36.96889965881818,
+					"longitude": -70.18614015586962,
+					"member": 0,
+					"model_track_id": "cyclogenesis_4",
+					"mslp_hpa": 988.4347080855584,
+					"valid_time": "2026-10-21T00:00:00Z",
+					"vmax_ms": 25.31140981926875
+				},
+				{
+					"forecast_track_duration_hours": 24,
+					"forecast_track_point_count": 5,
+					"latitude": 10.123195600163228,
+					"longitude": 53.706820815414545,
+					"member": 0,
+					"model_track_id": "cyclogenesis_5",
+					"mslp_hpa": 997.9280696131282,
+					"valid_time": "2026-10-21T00:00:00Z",
+					"vmax_ms": 24.503375010070997
+				},
+				{
+					"forecast_track_duration_hours": 6,
+					"forecast_track_point_count": 2,
+					"latitude": 12.612615801366072,
+					"longitude": 93.62635007035846,
+					"member": 0,
+					"model_track_id": "cyclogenesis_7",
+					"mslp_hpa": 1006.3794574897677,
+					"valid_time": "2026-10-21T00:00:00Z",
+					"vmax_ms": 10.698561252916933
+				},
+				{
+					"forecast_track_duration_hours": 6,
+					"forecast_track_point_count": 2,
+					"latitude": 10.850177856910896,
+					"longitude": 168.72496478955617,
+					"member": 0,
+					"model_track_id": "cyclogenesis_8",
+					"mslp_hpa": 1007.706408971231,
+					"valid_time": "2026-10-21T00:00:00Z",
+					"vmax_ms": 11.210830128721112
+				},
+				{
+					"forecast_track_duration_hours": 0,
+					"forecast_track_point_count": 1,
+					"latitude": 9.652158698057145,
+					"longitude": -97.28740137160969,
+					"member": 0,
+					"model_track_id": "cyclogenesis_9",
+					"mslp_hpa": 1007.7415983725245,
+					"valid_time": "2026-10-21T00:00:00Z",
+					"vmax_ms": 15.067418840559553
+				},
+				{
+					"forecast_track_duration_hours": 66,
+					"forecast_track_point_count": 12,
+					"latitude": 19.049286819121082,
+					"longitude": 129.60217712273715,
+					"member": 0,
+					"model_track_id": "ecmwf-tf:2026:36W",
+					"mslp_hpa": 907.1761541929683,
+					"valid_time": "2026-10-21T00:00:00Z",
+					"vmax_ms": 72.74756226150465
+				}
+			],
+			"valid_time": "2026-10-21T00:00:00Z"
+		}
+	]
+}

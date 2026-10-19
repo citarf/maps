@@ -19,6 +19,7 @@ Client SvelteKit qui rend des OMfiles via MapLibre GL — l'intégralité du ren
 - **Wind overlay** — surcouche de vent à 10/80/120/180 m, opacité indépendante de la couche principale.
 - **Deuxième couche scalaire** — superposition de deux variables (ex : température + précipitation) avec opacité réglable.
 - **Diaporama / playback** — animation pré-rendue avec FPS configurable (4–15 fps), capture côté canvas via `preserveDrawingBuffer`.
+- **Cyclones IA (expérimental)** — onglet « Cyclones IA » : superpositions du modèle IA WeatherNext Cyclones Mini (Google DeepMind) — cyclones, trajectoires, zones à surveiller et cônes d'incertitude (feature flag) — activables sur n'importe quel fond, échéance alignée sur la frise principale, servies par l'API Weather AI du portail. Les champs continus (pression, probabilité d'existence) viendront comme modèle du sélecteur. Jamais une alerte officielle (voir `## Architecture`).
 - **UI 100 % française.**
 
 ### Dépendance forkée
@@ -105,9 +106,10 @@ Voir [`.claude/CLAUDE.md`](./.claude/CLAUDE.md) et les règles ciblées dans [`.
 - pipeline playback / pré-rendu (`playback-renderer.ts`)
 - synchronisation URL ↔ stores Svelte 5
 - sondages verticaux client-side (Skew-T + hodographe + indices convectifs) calculés depuis les OMfiles AROME niveaux de pression au point cliqué (`src/lib/sounding/`)
+- couches expérimentales Weather AI (cyclones) : produits découverts depuis le catalogue de l'API du portail, run chargé hors écran puis bascule atomique, rendu MapLibre dédié hors `om://` (`src/lib/weather-ai/`, onglet « Cyclones IA »). L'API est appelée en direct (le portail renvoie l'en-tête CORS) ; `VITE_WEATHER_AI_API_URL=/api/weather-ai` passe optionnellement par le proxy Vite en local ; `VITE_WEATHER_AI_CONES=off|on|fixture` pilote les cônes (`?weather_ai_cones=fixture` : démonstration hors API sur le run de référence archivé)
 - compositions de cartes (fond + superpositions d'isolignes/flèches, compositions toutes faites et enregistrées ; portage des « Combined charts » d'open-meteo/maps #361) : `composition.ts`, `overlay-stack.ts`, `stores/composition.ts`, paramètre d'URL `overlays`
 
-Le chrome s'organise autour d'un header fin pleine largeur (marque Infoclimat, onglet « Carte », bouton « Réglages » ouvrant le panneau Avancé) et, sur desktop, d'une sidebar gauche à rail d'onglets — **Données** (modèle, recherche et liste des variables, niveaux en puces), **Compositions** (superpositions), **Carte** (calque météo, fond de carte, interaction) — dont le panneau se replie sur le rail ; sur mobile, un bottom-sheet reprend les mêmes trois onglets. La timeline et la légende se décalent de la largeur de la sidebar ; les contrôles MapLibre natifs sont ancrés en bas-droite au-dessus de la timeline.
+Le chrome s'organise autour d'un header fin pleine largeur (marque Infoclimat, onglet « Carte », bouton « Réglages » ouvrant le panneau Avancé) et, sur desktop, d'une sidebar gauche à rail d'onglets — **Données** (modèle, recherche et liste des variables, niveaux en puces), **Compositions** (superpositions), **Carte** (calque météo, fond de carte, interaction), **Cyclones IA** (couches expérimentales Weather AI) — dont le panneau se replie sur le rail ; sur mobile, un bottom-sheet reprend les mêmes quatre onglets. La timeline et la légende se décalent de la largeur de la sidebar ; les contrôles MapLibre natifs sont ancrés en bas-droite au-dessus de la timeline.
 
 ## Crédits & licence
 

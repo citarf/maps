@@ -1,0 +1,425 @@
+{
+	"schema_version": "cyclone-cones-public-product/1.0.0",
+	"product_id": "global-cyclone-cones-public",
+	"run_id": "wn2-oper-20261018T000000Z-adac4e2e6d9b",
+	"init_time": "2026-10-18T00:00:00Z",
+	"snapshot_id": "wn2-input-set-sha256-adac4e2e6d9b2e2f94cca25f329d96922380bb3fef8b43a89c9f5f02fbbc47d2",
+	"experimental": true,
+	"alert_authority": false,
+	"calibration_status": "best_track_only_operational_coverage_pending",
+	"mention": "Expérimental — calibré sur positions best track, couverture sur amorces opérationnelles en cours de mesure.",
+	"public_delivery_allowed": true,
+	"source": {
+		"product_id": "global-cyclone-cones",
+		"schema_version": "cyclone-cones-product/1.0.0",
+		"uri": "s3://wai-gold/cones/run_date=2026-10-18/run_id=wn2-oper-20261018T000000Z-adac4e2e6d9b/cones.json",
+		"version_id": "fixture-not-a-real-version",
+		"sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+	},
+	"levels": ["0.68", "0.90"],
+	"member_count": 3,
+	"member_quorum": 2,
+	"maximum_lead_hours": 72,
+	"southern_maximum_lead_hours": 24,
+	"storms": [
+		{
+			"storm_id": "ecmwf-tf:2026:01P",
+			"hemisphere": "south",
+			"maximum_lead_hours": 24,
+			"cones": [
+				{
+					"lead_hours": 6,
+					"valid_time": "2026-10-18T06:00:00Z",
+					"available": true,
+					"available_members": 3,
+					"centre": {
+						"latitude": -16.67,
+						"longitude": -161.91
+					},
+					"radius_km": {
+						"0.68": 58.6,
+						"0.90": 96.7
+					}
+				},
+				{
+					"lead_hours": 12,
+					"valid_time": "2026-10-18T12:00:00Z",
+					"available": true,
+					"available_members": 3,
+					"centre": {
+						"latitude": -17.33,
+						"longitude": -160.77
+					},
+					"radius_km": {
+						"0.68": 77.2,
+						"0.90": 127.4
+					}
+				},
+				{
+					"lead_hours": 18,
+					"valid_time": "2026-10-18T18:00:00Z",
+					"available": true,
+					"available_members": 3,
+					"centre": {
+						"latitude": -18.53,
+						"longitude": -159.57
+					},
+					"radius_km": {
+						"0.68": 95.8,
+						"0.90": 158.1
+					}
+				},
+				{
+					"lead_hours": 24,
+					"valid_time": "2026-10-19T00:00:00Z",
+					"available": true,
+					"available_members": 3,
+					"centre": {
+						"latitude": -19.48,
+						"longitude": -157.86
+					},
+					"radius_km": {
+						"0.68": 114.4,
+						"0.90": 188.8
+					}
+				},
+				{
+					"lead_hours": 30,
+					"valid_time": "2026-10-19T06:00:00Z",
+					"available": false,
+					"available_members": 3,
+					"reason": "southern_hemisphere_availability_below_threshold"
+				},
+				{
+					"lead_hours": 36,
+					"valid_time": "2026-10-19T12:00:00Z",
+					"available": false,
+					"available_members": 3,
+					"reason": "southern_hemisphere_availability_below_threshold"
+				},
+				{
+					"lead_hours": 42,
+					"valid_time": "2026-10-19T18:00:00Z",
+					"available": false,
+					"available_members": 3,
+					"reason": "southern_hemisphere_availability_below_threshold"
+				},
+				{
+					"lead_hours": 48,
+					"valid_time": "2026-10-20T00:00:00Z",
+					"available": false,
+					"available_members": 3,
+					"reason": "southern_hemisphere_availability_below_threshold"
+				}
+			]
+		},
+		{
+			"storm_id": "ecmwf-tf:2026:21E",
+			"hemisphere": "north",
+			"maximum_lead_hours": 72,
+			"cones": [
+				{
+					"lead_hours": 6,
+					"valid_time": "2026-10-18T06:00:00Z",
+					"available": true,
+					"available_members": 3,
+					"centre": {
+						"latitude": 19.09,
+						"longitude": -106.1
+					},
+					"radius_km": {
+						"0.68": 58.6,
+						"0.90": 96.7
+					}
+				},
+				{
+					"lead_hours": 12,
+					"valid_time": "2026-10-18T12:00:00Z",
+					"available": true,
+					"available_members": 3,
+					"centre": {
+						"latitude": 19.73,
+						"longitude": -106.08
+					},
+					"radius_km": {
+						"0.68": 77.2,
+						"0.90": 127.4
+					}
+				},
+				{
+					"lead_hours": 18,
+					"valid_time": "2026-10-18T18:00:00Z",
+					"available": true,
+					"available_members": 3,
+					"centre": {
+						"latitude": 19.51,
+						"longitude": -106.58
+					},
+					"radius_km": {
+						"0.68": 95.8,
+						"0.90": 158.1
+					}
+				},
+				{
+					"lead_hours": 24,
+					"valid_time": "2026-10-19T00:00:00Z",
+					"available": true,
+					"available_members": 3,
+					"centre": {
+						"latitude": 20.3,
+						"longitude": -106.73
+					},
+					"radius_km": {
+						"0.68": 114.4,
+						"0.90": 188.8
+					}
+				},
+				{
+					"lead_hours": 30,
+					"valid_time": "2026-10-19T06:00:00Z",
+					"available": true,
+					"available_members": 3,
+					"centre": {
+						"latitude": 20.99,
+						"longitude": -107.04
+					},
+					"radius_km": {
+						"0.68": 133.0,
+						"0.90": 219.4
+					}
+				},
+				{
+					"lead_hours": 36,
+					"valid_time": "2026-10-19T12:00:00Z",
+					"available": true,
+					"available_members": 3,
+					"centre": {
+						"latitude": 20.99,
+						"longitude": -106.91
+					},
+					"radius_km": {
+						"0.68": 151.6,
+						"0.90": 250.1
+					}
+				},
+				{
+					"lead_hours": 42,
+					"valid_time": "2026-10-19T18:00:00Z",
+					"available": false,
+					"available_members": 2,
+					"reason": "undefined_centre"
+				},
+				{
+					"lead_hours": 48,
+					"valid_time": "2026-10-20T00:00:00Z",
+					"available": true,
+					"available_members": 3,
+					"centre": {
+						"latitude": 20.99,
+						"longitude": -107.51
+					},
+					"radius_km": {
+						"0.68": 188.8,
+						"0.90": 311.5
+					}
+				},
+				{
+					"lead_hours": 54,
+					"valid_time": "2026-10-20T06:00:00Z",
+					"available": true,
+					"available_members": 3,
+					"centre": {
+						"latitude": 20.88,
+						"longitude": -107.55
+					},
+					"radius_km": {
+						"0.68": 207.4,
+						"0.90": 342.2
+					}
+				},
+				{
+					"lead_hours": 60,
+					"valid_time": "2026-10-20T12:00:00Z",
+					"available": true,
+					"available_members": 3,
+					"centre": {
+						"latitude": 21.14,
+						"longitude": -108.03
+					},
+					"radius_km": {
+						"0.68": 226.0,
+						"0.90": 372.9
+					}
+				}
+			]
+		},
+		{
+			"storm_id": "ecmwf-tf:2026:36W",
+			"hemisphere": "north",
+			"maximum_lead_hours": 72,
+			"cones": [
+				{
+					"lead_hours": 6,
+					"valid_time": "2026-10-18T06:00:00Z",
+					"available": true,
+					"available_members": 3,
+					"centre": {
+						"latitude": 13.56,
+						"longitude": 142.64
+					},
+					"radius_km": {
+						"0.68": 58.6,
+						"0.90": 96.7
+					}
+				},
+				{
+					"lead_hours": 12,
+					"valid_time": "2026-10-18T12:00:00Z",
+					"available": true,
+					"available_members": 3,
+					"centre": {
+						"latitude": 13.52,
+						"longitude": 141.27
+					},
+					"radius_km": {
+						"0.68": 77.2,
+						"0.90": 127.4
+					}
+				},
+				{
+					"lead_hours": 18,
+					"valid_time": "2026-10-18T18:00:00Z",
+					"available": true,
+					"available_members": 3,
+					"centre": {
+						"latitude": 14.24,
+						"longitude": 140.53
+					},
+					"radius_km": {
+						"0.68": 95.8,
+						"0.90": 158.1
+					}
+				},
+				{
+					"lead_hours": 24,
+					"valid_time": "2026-10-19T00:00:00Z",
+					"available": true,
+					"available_members": 3,
+					"centre": {
+						"latitude": 14.37,
+						"longitude": 139.11
+					},
+					"radius_km": {
+						"0.68": 114.4,
+						"0.90": 188.8
+					}
+				},
+				{
+					"lead_hours": 30,
+					"valid_time": "2026-10-19T06:00:00Z",
+					"available": true,
+					"available_members": 3,
+					"centre": {
+						"latitude": 15.04,
+						"longitude": 138.1
+					},
+					"radius_km": {
+						"0.68": 133.0,
+						"0.90": 219.4
+					}
+				},
+				{
+					"lead_hours": 36,
+					"valid_time": "2026-10-19T12:00:00Z",
+					"available": true,
+					"available_members": 3,
+					"centre": {
+						"latitude": 15.22,
+						"longitude": 136.7
+					},
+					"radius_km": {
+						"0.68": 151.6,
+						"0.90": 250.1
+					}
+				},
+				{
+					"lead_hours": 42,
+					"valid_time": "2026-10-19T18:00:00Z",
+					"available": true,
+					"available_members": 3,
+					"centre": {
+						"latitude": 16.09,
+						"longitude": 136.19
+					},
+					"radius_km": {
+						"0.68": 170.2,
+						"0.90": 280.8
+					}
+				},
+				{
+					"lead_hours": 48,
+					"valid_time": "2026-10-20T00:00:00Z",
+					"available": false,
+					"available_members": 1,
+					"reason": "insufficient_members"
+				},
+				{
+					"lead_hours": 54,
+					"valid_time": "2026-10-20T06:00:00Z",
+					"available": true,
+					"available_members": 3,
+					"centre": {
+						"latitude": 16.51,
+						"longitude": 133.44
+					},
+					"radius_km": {
+						"0.68": 207.4,
+						"0.90": 342.2
+					}
+				},
+				{
+					"lead_hours": 60,
+					"valid_time": "2026-10-20T12:00:00Z",
+					"available": true,
+					"available_members": 3,
+					"centre": {
+						"latitude": 17.41,
+						"longitude": 132.13
+					},
+					"radius_km": {
+						"0.68": 226.0,
+						"0.90": 372.9
+					}
+				},
+				{
+					"lead_hours": 66,
+					"valid_time": "2026-10-20T18:00:00Z",
+					"available": true,
+					"available_members": 3,
+					"centre": {
+						"latitude": 18.29,
+						"longitude": 130.99
+					},
+					"radius_km": {
+						"0.68": 244.6,
+						"0.90": 403.6
+					}
+				},
+				{
+					"lead_hours": 72,
+					"valid_time": "2026-10-21T00:00:00Z",
+					"available": true,
+					"available_members": 3,
+					"centre": {
+						"latitude": 19.05,
+						"longitude": 129.6
+					},
+					"radius_km": {
+						"0.68": 263.2,
+						"0.90": 434.3
+					}
+				}
+			]
+		}
+	]
+}

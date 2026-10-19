@@ -1,5 +1,6 @@
 <script lang="ts">
 	import CompositionPanel from '$lib/components/composition/composition-panel.svelte';
+	import WeatherAiPanel from '$lib/components/weather-ai/weather-ai-panel.svelte';
 
 	import DisplaySection from './display-section.svelte';
 	import LayerList from './layer-list.svelte';
@@ -22,6 +23,8 @@
 	</div>
 {:else if tab === 'compositions'}
 	<CompositionPanel />
+{:else if tab === 'cyclones'}
+	<WeatherAiPanel />
 {:else}
 	<DisplaySection />
 {/if}
